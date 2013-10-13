@@ -12,7 +12,7 @@ Giga leverages the following fine libraries:
 <li>signals.js — "Event" dispatching</li>
 <li>Greensock tweening — GAIA used Greensock (ActionScript) , Giga uses Greensock (JavaScript)</li>
 <li>JQuery / Zepto — This dependency will eventually be removed</li>
-<ul>
+</ul>
 
 <h2>Installation</h2>
 The files in the PHP folder must be added to your server.
