@@ -10,6 +10,8 @@ define(function(require){
 
 		this.cache = {};
 
+		this.dataUrl = 'data.php';
+
 		this.init();
 	}
 
@@ -59,7 +61,7 @@ define(function(require){
 		var self = this;
 
 		$.ajax({
-			url: url + '/index_data.php',
+			url: url + this.dataUrl,
 			success: function(x)
 			{
 				self.onFetched(url, x, deferred);
