@@ -13,3 +13,23 @@ Giga leverages the following fine libraries:
 <li>Greensock tweening — GAIA used Greensock (ActionScript) , Giga uses Greensock (JavaScript)</li>
 <li>JQuery / Zepto — This dependency will eventually be removed</li>
 <ul>
+
+<h2>Installation</h2>
+The files in the PHP folder must be added to your server.
+
+Don't forget the .htaccess file — it routes all requests to index.php, the site template. 
+<ul>
+	<li>Deep link requests will render a full site with the requested content whereever you place $giga->content()</li>
+	<li>Normal navigation requests will be intercepted by giga; Giga JS will request your html content via AJAX.</li>
+</ul>
+
+
+<h3>Optimized Build</h3>
+Set the paths to tools listed in build.properties
+
+... 
+
+
+from the command-line:
+ant build
+
