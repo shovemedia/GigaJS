@@ -19,7 +19,7 @@ The files in the PHP folder must be added to your server.
 
 Don't forget the .htaccess file — it routes all requests to index.php, the site template. 
 <ul>
-	<li>Deep link requests will render a full site with the requested content whereever you place $giga->content()</li>
+	<li>Deep link requests will render a full site with the requested content whereever you place $giga-&gt;content()</li>
 	<li>Normal navigation requests will be intercepted by giga; Giga JS will request your html content via AJAX.</li>
 </ul>
 
