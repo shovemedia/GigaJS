@@ -27,7 +27,7 @@ define(function(require){
 			var State = History.getState(); 
 			History.log(State.data, State.title, State.url);
 
-			self.goto(History.getShortUrl(State.url));	
+			self.gotoBranch(History.getShortUrl(State.url));	
 		});
 	};
 
@@ -42,11 +42,11 @@ define(function(require){
 
 		this.siteController.on.transitionOut.add(function(step){
 			var content = self.contentRenderer.getOutgoingContent(self.transitioningBranch);
-			self.transitionController.out(content, self.transitioningBranch, step);
+			self.transitionController.xout(content, self.transitioningBranch, step);
 		});
 		this.siteController.on.transitionIn.add(function(step){
 			var content = self.contentRenderer.getIngoingContent(self.transitioningBranch);
-			self.transitionController.in(content, self.transitioningBranch, step);
+			self.transitionController.xin(content, self.transitioningBranch, step);
 		});
 
 		this.siteController.on.preload.add(function(step){
@@ -72,7 +72,7 @@ define(function(require){
 			self.navigateTo(self.targetBranch); //
 		});
 
-		this.goto(History.getShortUrl(History.getLocationHref()));
+		this.gotoBranch(History.getShortUrl(History.getLocationHref()));
 	};
 
 	p.setPreloadController = function(clazz)
@@ -95,7 +95,7 @@ define(function(require){
 	};
 
 	// This method is the beginning of the event chain
-	p.goto = function(branch)
+	p.gotoBranch = function(branch)
 	{
 		if (!branch) {
 			branch = "/";

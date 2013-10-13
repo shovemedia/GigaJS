@@ -29,7 +29,7 @@ define(function(require){
 
 	var p = TransitionController.prototype;
 
-	p.in = function($content, branch, step)
+	p.xin = function($content, branch, step)
 	{
 		console.log ('transition in', $content);
 
@@ -71,7 +71,7 @@ define(function(require){
 		}
 	};
 
-	p.out = function($content, branch, step)
+	p.xout = function($content, branch, step)
 	{
 		console.log ('transition out', $content);
 

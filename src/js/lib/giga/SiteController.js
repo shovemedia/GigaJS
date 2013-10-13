@@ -15,11 +15,8 @@ define(function(require){
 		var self = this;
 
 		this.transitionOutStep.next = 
-		this.preloadStep.next = 
-		this.transitionInStep.next = function()
-		{
-			self.continue();
-		}
+		this.preloadStep.next =  
+		this.transitionInStep.next = this.nextStep.bind(this);
 
 		this.on = {
 			transitionOut: new signals.Signal(),
@@ -251,7 +248,7 @@ define(function(require){
 		}	
 	};
 
-	p.continue = function()
+	p.nextStep = function()
 	{
 		console.log ('SiteController state', this.stateMachine.state);
 		this.stateMachine.trigger('continue');
@@ -259,7 +256,7 @@ define(function(require){
 
 	p.processPageChange = function()
 	{
-		this.continue();
+		this.nextStep();
 	};
 
 	//	p.reset = function()
