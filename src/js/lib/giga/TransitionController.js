@@ -2,36 +2,39 @@ define(function(require){
 
 		var $ = require('jquery'),
 		easing = require('lib/tween/easing/EasePack'),
+		signals = require('lib/signals'),
 
-		TweenLite = require('lib/tween/TweenLite'),
-		TimelineLite = require('lib/tween/TimelineLite')
-		;
+		TweenLite = require('lib/tween/TweenLite');
+		//	TimelineLite = require('lib/tween/TimelineLite');
 	
 	require('lib/tween/plugins/CSSPlugin');
 	
 
-	var TransitionController = function($context, $hidden)
+	var TransitionController = function(giga)
 	{
 		//	TweenLite.selector = $
-		this.$context = $context;
-		this.$hidden = $hidden;
+		this.$context = giga.$context;
+		this.$hidden = giga.$hidden;
 
 		this.$detail = $('#projectDetail', this.$context);
+
+		this.on = {
+			'transitionOut': new signals.Signal(),
+			'transitionIn': new signals.Signal()
+		}
 
 		this.duration = 1;
 
 		this.defaultin = 'fadeIn';
-		this.defaultout = 'fadeOut';		
-
-		this.firstDisplay = true;
-
+		this.defaultout = 'fadeOut';
 	};
 
 	var p = TransitionController.prototype;
 
-	p.xin = function($content, branch, step)
+
+	p.getTransitionSequence = function(inOutAttribute, $content, step)
 	{
-		console.log ('transition in', $content);
+		console.log ('transition sequence', inOutAttribute, $content, step);
 
 		if ($content != undefined)
 		{
@@ -40,134 +43,92 @@ define(function(require){
 			var transitionList = [];
 
 			$content.each(function(i){
+				console.log('each', i)
 				var $item = $(this);
-				var transition = self.getTransition('in', $item, branch);
+				var transition = self.getTransitionStep(inOutAttribute, i, transitionList, step, $item);
 
-				console.log('x in', i, $item.html());
-
-
-
-				step.hold();
-
-				var onStart = function() {
-					self.$detail.append($item);
-				};
-
-				var onComplete = self.generateCompleteCallbackIn(i+1, step, transitionList);
-
-				transitionList.push(function(){
-					transition($item, branch, onStart, onComplete)
-				});				
+				transitionList.push(transition);				
 			});
 
 			console.log('transitionList', transitionList);
 
-			if(transitionList.length > 0)
-			{
-				transitionList[0]();
-			}
-
-
+			return transitionList;
 		}
 	};
 
-	p.xout = function($content, branch, step)
+	p.getTransitionStep = function(inOutAttribute, i, transitionList, step, $item)
 	{
-		console.log ('transition out', $content);
+		console.log('getTransitionStep', inOutAttribute, i, transitionList, step, $item);
 
-		if ($content != undefined)
-		{
-			if (!this.firstDisplay)
-			{	
-				var self = this;
-
-				var transitionList = [];
-
-				$content.each(function(i){
-					var $item = $(this);
-					var transition = self.getTransition('out', $item, branch);
-
-					console.log('x out', i, $item.html());
-
-					step.hold();
-
-					var onComplete = self.generateCompleteCallbackOut(i, step, transitionList, $item);
-
-					transitionList.push(function(){
-						transition($item, branch, null, onComplete)
-					});		
-				});
-
-				console.log('transitionList', transitionList);
-
-				if(transitionList.length > 0)
-				{
-					transitionList[transitionList.length-1]();
-				}
-
-			}
-			else
-			{
-				this.firstDisplay = false;
-			}	
-		}
-	};
-
-
-	p.generateCompleteCallbackIn = function(i, step, transitionList)
-	{
-		return function(){
-			console.log('complete in', i, new Date());
-
-			step.release();
-			if (transitionList[i] != undefined)
-			{
-				transitionList[i]();
-			}	
-		};
-	};
-
-	p.generateCompleteCallbackOut = function(i, step, transitionList, $content)
-	{
 		var self = this;
 
-		return function(){
-			console.log('complete out', i, new Date());
+		step.hold();
 
-			step.release();
-			self.$hidden.append($content);
-			if (transitionList[i-1] != undefined)
+		var onStart;
+		var onComplete;
+
+		if (inOutAttribute == 'in')
+		{
+			onStart = function() {
+				self.on.transitionIn.dispatch(i);				
+				self.$detail.append($item);
+			};
+
+//			onComplete = self.generateCompleteCallback(i+1, transitionList, step);
+			onComplete = function()
 			{
-				transitionList[i-1]();
-			}	
+				step.release();
+
+				if (transitionList[i+1] != undefined)
+				{
+					transitionList[i+1]();
+				}	
+			}
+
+		}
+		else if (inOutAttribute == 'out')
+		{
+			onStart = function() {
+				self.on.transitionOut.dispatch(i);
+			};
+
+			//onComplete = self.generateCompleteCallback(i-1, transitionList, step, function(){self.$hidden.append($item);});
+			onComplete = function()
+			{
+				step.release();
+
+				self.$hidden.prepend($item);
+
+				if (transitionList[i-1] != undefined)
+				{
+					transitionList[i-1]();
+				}	
+			}
+		}
+
+		var transitionName = $item.children().first().data('transition' + inOutAttribute);
+
+		if (this.transitions[transitionName] == undefined)
+		{
+			transitionName = this['default' + inOutAttribute];
+		}
+
+		console.log('transitionName', transitionName);
+
+		return function(){
+			self.transitions[transitionName]($item, onStart, onComplete);
 		};
 	};
 
 	p.registerTransitions = function(clazz)
 	{
 		this.transitions = new clazz(this);
-		console.log(this.transitions)
+		console.log(this.transitions);
 
 		//	for (var i in obj)
 		//	{
 
 		//	}
-	};
-
-	p.getTransition = function(inOutAttribute, $content, branch)
-	{
-		var transitionName = $content.children().first().data('transition' + inOutAttribute);
-
-		console.log(inOutAttribute, 'transitionName', transitionName);
-		console.log($content)
-
-		var fn = this.transitions[transitionName];
-		if (fn == undefined)
-		{
-			fn = this.transitions[this['default' + inOutAttribute]];
-		}
-
-		return fn.bind(this.transitions);
 	};
 
 	return TransitionController;

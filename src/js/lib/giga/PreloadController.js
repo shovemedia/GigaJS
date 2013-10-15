@@ -2,7 +2,7 @@ define(function(require){
 	var $ = require('jquery');
 	require('lib/jquery.withSelf');
 
-	var Q = require('lib/q');
+	var Q = require('q');
 
 	var PreloadController = function($context)
 	{

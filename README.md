@@ -8,10 +8,10 @@ Giga leverages the following fine libraries:
 <li>require.js — All JS in Giga is wrapped as an AMD module.</li>
 <li>almond.js — optimized builds are built with the require.js optimizer to include almond</li>
 <li>History.js — as GAIA used SWFAddress, Giga uses History.js</li>
-<li>Q.js — Promises implementation</li>
+<li>when.js / Q.js — Promises implementation</li>
 <li>signals.js — "Event" dispatching</li>
 <li>Greensock tweening — GAIA used Greensock (ActionScript) , Giga uses Greensock (JavaScript)</li>
-<li>JQuery / Zepto — This dependency will eventually be removed</li>
+<li>Zepto / JQuery — Selector engine</li>
 </ul>
 
 <h2>Installation</h2>

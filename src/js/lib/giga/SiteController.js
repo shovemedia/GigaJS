@@ -20,7 +20,8 @@ define(function(require){
 
 		this.on = {
 			transitionOut: new signals.Signal(),
-			transitionIn: new signals.Signal(),			
+			transitionIn: new signals.Signal(),
+			transitionCross: new signals.Signal(),
 			preload: new signals.Signal(),
 			complete: new signals.Signal()		
 		};
@@ -221,8 +222,7 @@ define(function(require){
 		this.stateMachine.on.transition.add(function(){
 			console.log('SiteController transition');
 			self.currentStep = self.transitionInStep;
-			self.on.transitionIn.dispatch(self.currentStep);
-			self.on.transitionOut.dispatch(self.currentStep);
+			self.on.transitionCross.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 

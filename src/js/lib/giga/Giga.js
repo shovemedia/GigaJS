@@ -1,6 +1,5 @@
 define(function(require){
 
-	var Q = require('lib/q');
 	var signals = require('lib/signals');
 	var History = require('lib/History');
 
@@ -18,10 +17,12 @@ define(function(require){
 		this.flowController = new FlowController();
 		this.siteController = new SiteController(this.flowController);
 
-		this.transitionController = new TransitionController(this.$context, this.$hidden);
+		this.transitionController = new TransitionController(this);
 
 		this.currentBranch = '/';
 		this.targetBranch = null;
+		this.transitioningBranch = null;
+		this.rootChangeBranch = null;
 
 		History.Adapter.bind(window, 'statechange', function() {
 			var State = History.getState(); 
@@ -41,13 +42,63 @@ define(function(require){
 		this.siteController.init(this.flowController.defaultFlow);
 
 		this.siteController.on.transitionOut.add(function(step){
-			var content = self.contentRenderer.getOutgoingContent(self.transitioningBranch);
-			self.transitionController.xout(content, self.transitioningBranch, step);
+			var $content = self.getOutgoingContent(self.transitioningBranch);
+			var sequence = self.transitionController.getTransitionSequence('out', $content, step);
+			if(sequence.length > 0)
+			{
+				sequence[sequence.length-1]();
+			}
+
 		});
 		this.siteController.on.transitionIn.add(function(step){
-			var content = self.contentRenderer.getIngoingContent(self.transitioningBranch);
-			self.transitionController.xin(content, self.transitioningBranch, step);
+			var $content = self.getIngoingContent(self.transitioningBranch);
+			var sequence = self.transitionController.getTransitionSequence('in', $content, step);
+			if(sequence.length > 0)
+			{
+				sequence[0]();
+			}
 		});
+
+
+		this.siteController.on.transitionCross.add(function(step){
+
+			console.log('transitionCross');
+
+			var $contentOut = self.getOutgoingContent(self.transitioningBranch);
+			var $contentIn = self.getIngoingContent(self.transitioningBranch);
+
+			var sequenceOut = self.transitionController.getTransitionSequence('out', $contentOut, step);
+			var sequenceIn = self.transitionController.getTransitionSequence('in', $contentIn, step);
+
+			//	self.transitionController.on.transitionIn.add(function(){
+			//	});
+
+			if(sequenceOut.length > 0)
+			{
+				sequenceOut[sequenceOut.length-1]();
+
+				var inCounterDelay = sequenceOut.length;
+
+				if(sequenceIn.length > 0)
+				{
+					self.transitionController.on.transitionOut.removeAll();
+					self.transitionController.on.transitionOut.add(function(){
+						if(--inCounterDelay == 0)
+						{
+							sequenceIn[0]();							
+						}
+					});		
+				}
+			}
+			else
+			{
+				if(sequenceIn.length > 0)
+				{
+					sequenceIn[0]();
+				}
+			}
+		});
+	
 
 		this.siteController.on.preload.add(function(step){
 			//console.log('preload step hold!');
@@ -74,6 +125,71 @@ define(function(require){
 
 		this.gotoBranch(History.getShortUrl(History.getLocationHref()));
 	};
+
+
+	p.getSelectorForBranch = function(branch)
+	{
+		var selector = '';
+
+		var the_arr = branch.split('/');
+	    the_arr.pop();
+	    //	the_arr.pop();
+
+	    do
+	    {	
+			//	console.log('****')
+			//	console.log(branch, the_arr);		    
+		    //	the_arr.pop();
+			var relContext = the_arr.join('/') + '/';
+
+			if (selector != '')
+			{
+				selector += ', ';
+			}
+
+			selector += 'div[data-rel="' + relContext + '"]';
+		}
+		while(the_arr.pop())
+
+		return selector;
+	}
+
+	p.getOutgoingContent = function(branch)
+	{
+		//	var relContext = $x.data('rel');
+//		console.log('relContext pre', relContext);
+
+		var selector = this.getSelectorForBranch(branch);
+    
+		//var $outgoing = $('div[data-rel^="' + relContext + '"][data-rel!="' + relContext + '"], div[data-rel]:not([data-rel^="' + relContext + '"])');
+
+		var $outgoing = $('div[data-rel]').not(selector).not(this.$hidden.children());
+
+		//console.log('getOutgoingContent', 'for', branch, 'is !', selector, $outgoing);
+
+		return $outgoing
+	};
+
+	p.getIngoingContent = function(branch)
+	{
+		var selector = this.getSelectorForBranch(branch);
+
+		console.log('selector', selector)
+
+		var $ingoing = $(selector, this.$hidden);
+		//console.log('getIngoingContent', 'is', selector, $ingoing);
+
+		//console.log('HIDDEN: ', this.$hidden.html());
+
+		//	$ingoing.each(function(i){
+		//		console.log(i, $(this).html())
+		//	});
+
+		//	alert('holdup')
+
+		return $ingoing;
+	};
+
 
 	p.setPreloadController = function(clazz)
 	{
@@ -129,20 +245,20 @@ define(function(require){
 			var currentBranchArray = this.currentBranch.split('/');
 			var transitioningBranchArray = this.transitioningBranch.split('/');
 
-			var rootChangeBranch = '';
+			this.rootChangeBranch = '';
 
 			for (var i=0, len = transitioningBranchArray.length; i<len; i++)
 			{
-				rootChangeBranch += transitioningBranchArray[i] + '/';
+				this.rootChangeBranch += transitioningBranchArray[i] + '/';
 				if (currentBranchArray[i] != transitioningBranchArray[i])
 				{
 					break;
 				}	
 			}
 
-			console.log('rootChangeBranch', rootChangeBranch);
+			console.log('rootChangeBranch', this.rootChangeBranch);
 
-			var pageFlow = this.flowController.getBranchFlow(rootChangeBranch);
+			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
 			if (pageFlow != undefined)
 			{
 				this.siteController.init(pageFlow);
