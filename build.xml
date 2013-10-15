@@ -13,7 +13,7 @@
 
     <target name="purgeJsDeploy">
 
-        <echo message="Cleaning ${build.dir}/${dist.name} JS ..." />
+        <echo message="Cleaning ${build.dir} ..." />
 
         <delete dir="${build.dir}" />
         <mkdir dir="${build.dir}"/>        
@@ -27,24 +27,46 @@
 
 
 
-<target name="stripLogGiga" description="Strip log / console.log lines">
-    <echo>Commenting out log / console.log lines from ${build.dir}/${dist.name}</echo>
+<target name="stripLogModule" description="Strip log / console.log lines">
+    <echo>Commenting out log / console.log lines from ${build.dir}/${module.dir}${dist.module.name}</echo>
 
     <replaceregexp match="(\bwindow\.console\b.log\s*\(.*\)[;]*)" replace="" flags="g" >
         <fileset dir="${build.dir}">
-            <include name="**/${dist.name}"/>
+            <include name="**/${dist.module.name}"/>
         </fileset>
     </replaceregexp>
 
     <replaceregexp match="(\bconsole\b.log\s*\(.*\)[;]*)" replace="" flags="g" >
         <fileset dir="${build.dir}">
-            <include name="**/${dist.name}"/>
+            <include name="**/${dist.module.name}"/>
         </fileset>
     </replaceregexp>
 
     <replaceregexp match="((?&lt;!\.)\blog\b\s*\(.*\)[;]*)" replace="" flags="g" >
         <fileset dir="${build.dir}">
-            <include name="**/${dist.name}"/>
+            <include name="**/${dist.module.name}"/>
+        </fileset>
+    </replaceregexp>
+</target>
+
+<target name="stripLogSite" description="Strip log / console.log lines">
+    <echo>Commenting out log / console.log lines from ${build.dir}/${site.dir}${dist.site.name}</echo>
+
+    <replaceregexp match="(\bwindow\.console\b.log\s*\(.*\)[;]*)" replace="" flags="g" >
+        <fileset dir="${build.dir}">
+            <include name="**/${dist.site.name}"/>
+        </fileset>
+    </replaceregexp>
+
+    <replaceregexp match="(\bconsole\b.log\s*\(.*\)[;]*)" replace="" flags="g" >
+        <fileset dir="${build.dir}">
+            <include name="**/${dist.site.name}"/>
+        </fileset>
+    </replaceregexp>
+
+    <replaceregexp match="((?&lt;!\.)\blog\b\s*\(.*\)[;]*)" replace="" flags="g" >
+        <fileset dir="${build.dir}">
+            <include name="**/${dist.site.name}"/>
         </fileset>
     </replaceregexp>
 </target>
@@ -58,7 +80,7 @@
 
     <target name="compileViaNode">
 
-        <echo message="Building ${dist.name}..." />
+        <echo message="Building ${product.name}..." />
 
 <!--
         <buildnumber file="${build.dir}/build.number"/>
@@ -71,7 +93,7 @@
 
 		<!-- HOME -->
 	
-        <echo message="Building: ${product.name}  from src: ${src.dir}/   to: ${build.dir}" />
+        <echo message="Building:  from src: ${src.dir}/   to: ${build.dir}" />
 
 		<exec executable="node">
 			<arg value="${r.js}"/>
@@ -79,7 +101,7 @@
 			<arg value="build.js"/>
 		</exec>
 
-	<echo message="${dist.name} built." />
+	   <echo message="${product.name} built." />
 
   	</target>
 
@@ -88,18 +110,32 @@
 
 
 
-    <target name="lintGiga">
-        <echo message="JSLinting ${dist.name}..."/>
+    <target name="lintModule">
+        <echo message="JSLinting ${product.name}..."/>
 
         <apply executable="java">
-            <filelist dir="${dist.dir}">
-                <file name="${dist.name}"/>
+            <filelist dir="${dist.dir}${module.dir}">
+                <file name="${dist.module.name}"/>
             </filelist>
             <arg line="-jar"/>
             <arg path="${jslint.jar}"/>
         </apply>
 
-        <echo message="JSLinted ${dist.name}."/>
+        <echo message="JSLinted ${dist.module.name}."/>
+    </target>
+
+    <target name="lintSite">
+        <echo message="JSLinting ${product.name}..."/>
+
+        <apply executable="java">
+            <filelist dir="${dist.dir}${site.dir}">
+                <file name="${dist.site.name}"/>
+            </filelist>
+            <arg line="-jar"/>
+            <arg path="${jslint.jar}"/>
+        </apply>
+
+        <echo message="JSLinted ${dist.site.name}."/>
     </target>
 
 
@@ -107,19 +143,34 @@
 -->
 
 
-    <target name="minifyGiga">
-        <echo message="Building ${dist.min.name}..." />
+    <target name="minifyModule" depends="stripLogModule, lintModule">
+        <echo message="Building ${dist.module.min.name}..." />
 
-        <jscomp compilationLevel="simple" debug="false" output="${build.dir}/${dist.min.name}">
+        <jscomp compilationLevel="simple" debug="false" output="${build.dir}/${module.dir}${dist.module.min.name}">
             <externs dir="${dev.dir}">
                 <file name="externs.js"/>
             </externs>
             <sources dir="${build.dir}">
-                <file name="${dist.name}"/>
+                <file name="${module.dir}${dist.module.name}"/>
             </sources>
         </jscomp>
 
-        <echo message="${dist.min.name} built." />
+        <echo message="${dist.module.min.name} built." />
+    </target>
+
+    <target name="minifySite" depends="stripLogSite, lintSite">
+        <echo message="Building ${dist.site.min.name}..." />
+
+        <jscomp compilationLevel="simple" debug="false" output="${build.dir}/${site.dir}${dist.site.min.name}">
+            <externs dir="${dev.dir}">
+                <file name="externs.js"/>
+            </externs>
+            <sources dir="${build.dir}">
+                <file name="${site.dir}${dist.site.name}"/>
+            </sources>
+        </jscomp>
+
+        <echo message="${dist.site.min.name} built." />
     </target>
 
 
@@ -136,10 +187,10 @@
         <echo message="Generating documentation ${dist.name} ${dist.dir}" />
 
 
-    <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit" classpath="${jsdoc-toolkit.dir}/jsdoc-toolkit-ant-task-1.1.2.jar;${jsdoc-toolkit.dir}/java/classes/js.jar" />
+        <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit" classpath="${jsdoc-toolkit.dir}/jsdoc-toolkit-ant-task-1.1.2.jar;${jsdoc-toolkit.dir}/java/classes/js.jar" />
 
-    <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}" includeundocumented="true">
-    </jsdoctoolkit>
+        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}" includeundocumented="true">
+        </jsdoctoolkit>
 
     
 
@@ -167,7 +218,7 @@
         <delete includeEmptyDirs="true">
             <fileset dir="${build.dir}" defaultexcludes="no" 
                 includes="**/*"
-                excludes="${dist.name} ${dist.min.name} deflux.giga.all.css">
+                excludes="${module.dir}${dist.module.name} ${module.dir}${dist.module.min.name} ${site.dir}${dist.site.name} ${site.dir}${dist.site.min.name} all.css">
             </fileset>              
         </delete>
     </target>  
@@ -183,9 +234,7 @@
 
 
 <!--  -->
-    <target name="buildGiga" depends="stripLogGiga, lintGiga, minifyGiga">
-        <echo message="Build Giga Complete." />
-    </target>
+
 
     
     <target name="buildCSS" depends="">
@@ -204,8 +253,8 @@
 		</copy>
  </target>
 
-    <!--   -->
-    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, buildGiga, buildCSS, clean, beep">
+    <!--  buildDemo,  -->
+    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, buildCSS, clean, beep">
         <echo message="Build Complete." />
     </target>
 

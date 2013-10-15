@@ -328,7 +328,7 @@ define('lib/jquery.withSelf',['jquery'],function(){
 /*jslint onevar:true, undef:true, newcap:true, regexp:true, bitwise:true, maxerr:50, indent:4, white:false, nomen:false, plusplus:false */
 /*global define:false, require:false, exports:false, module:false*/
 
-/** 
+/** @license
  * JS Signals <http://millermedeiros.github.com/js-signals/>
  * Released under the MIT license
  * Author: Miller Medeiros
