@@ -3,9 +3,8 @@ define(function(require){
 		var $ = require('jquery'),
 		easing = require('lib/tween/easing/EasePack'),
 
-		TweenLite = require('lib/tween/TweenLite'),
-		TimelineLite = require('lib/tween/TimelineLite')
-		;
+		TweenLite = require('lib/tween/TweenLite');
+		//	TimelineLite = require('lib/tween/TimelineLite');
 	
 	require('lib/tween/plugins/CSSPlugin');
 	
@@ -17,7 +16,7 @@ define(function(require){
 
 	var p = PortfolioTransitions.prototype;
 
-	p.fadeIn = function($content, branch, onStart, onComplete)
+	p.fadeIn = function($content, onStart, onComplete)
 	{
 		console.log('fadeIn')
 
@@ -31,7 +30,7 @@ define(function(require){
 		});
 	};
 
-	p.fadeOut = function($content, branch, onStart, onComplete)
+	p.fadeOut = function($content, onStart, onComplete)
 	{
 		console.log('fadeOut');
 
@@ -47,7 +46,7 @@ define(function(require){
 
 
 
-	p.listIn = function($content, branch, onStart, onComplete)
+	p.listIn = function($content, onStart, onComplete)
 	{
 		console.log('listIn')
 
@@ -63,7 +62,7 @@ define(function(require){
 		});
 	};
 
-	p.listOut = function($content, branch, onStart, onComplete)
+	p.listOut = function($content, onStart, onComplete)
 	{
 		console.log('listOut');
 
@@ -79,7 +78,7 @@ define(function(require){
 		});
 	};
 
-	p.projectIn = function($content, branch, onStart, onComplete)
+	p.projectIn = function($content, onStart, onComplete)
 	{
 		console.log('projectIn')
 
@@ -96,7 +95,7 @@ define(function(require){
 	};
 
 
-	p.projectOut =  function($content, branch, onStart, onComplete)
+	p.projectOut =  function($content, onStart, onComplete)
 	{
 		console.log('projectOut');
 

@@ -1,4 +1,4 @@
-/*!
+/**
  * VERSION: beta 1.9.6
  * DATE: 2013-05-07
  * UPDATES AND DOCS AT: http://www.greensock.com

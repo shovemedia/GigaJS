@@ -1,7 +1,7 @@
 define(function(require){
 		
 	// vim:ts=4:sts=4:sw=4:
-	/*!
+	/**
 	 *
 	 * Copyright 2009-2012 Kris Kowal under the terms of the MIT
 	 * license found at http://github.com/kriskowal/q/raw/master/LICENSE

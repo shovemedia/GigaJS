@@ -6,7 +6,7 @@ define(function(require){
 	var PreloadController = require('lib/giga/PreloadController');
 
 	var ContentRenderer = require('ContentRenderer');
-	var PortfolioTransitions = require('PortfolioTransitions');
+	var TestTransitions = require('TestTransitions');
 
 
 // style="border: 1px solid red;"
@@ -29,10 +29,10 @@ define(function(require){
 		this.giga = new Giga($context, $hidden);
 		this.giga.setContentRenderer( ContentRenderer );
 		this.giga.setPreloadController( PreloadController );
-		this.giga.registerTransitions( PortfolioTransitions );
+		this.giga.registerTransitions( TestTransitions );
 
-		this.giga.setBranchFlow('/project1', this.giga.flowController.CROSS_FLOW);
-		this.giga.setBranchFlow('/project2', this.giga.flowController.CROSS_FLOW);		
+		//	this.giga.setBranchFlow('/project1', this.giga.flowController.CROSS_FLOW);
+		//	this.giga.setBranchFlow('/project2', this.giga.flowController.CROSS_FLOW);		
 
 		this.giga.init();
 	};

@@ -1,4 +1,4 @@
-/*!
+/**
  * VERSION: 0.1.6
  * DATE: 2013-02-13
  * UPDATES AND DOCS AT: http://www.greensock.com/jquery-gsap-plugin/
