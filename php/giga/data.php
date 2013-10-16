@@ -4,19 +4,26 @@ class data
 {
 	function data ($f)
 	{
-		$root = $_SERVER['DOCUMENT_ROOT'];
+
+		//echo 'data file: '. $f . "\n";
+
+		$this->root = $_SERVER['DOCUMENT_ROOT'];
 
 		$f_dir = dirname($f);
 
-		$this->dir = str_replace($root, '', $f_dir) . '/';
+		$this->dir = str_replace($this->root , '', $f_dir) . '/';
 
-		$file = basename($f, '.php') . '.html';
+		//echo 'this dir: '. $this->dir . "\n";
+
+//
 		//$data = file_get_contents($file);
-		// echo ('dir:  ' . $f_dir );
+
+		//echo 'data file: '. $f . "\n" ;// _dir . '/' . $file . "\n";
 
 
 		$doc = new DOMDocument();
-		$doc->loadHTMLFile($f_dir . '/' . $file); //
+		$doc->loadHTMLFile($f); //  _dir . '/' . $file
+
 		//$doc->replaceChild($doc->firstChild->firstChild, $doc);
 
 		$this->walkDom($doc);

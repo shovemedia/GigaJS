@@ -5,10 +5,10 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Giga Site</title>
+		<title>Giga Demo Site</title>
 
-	<script src="/js/lib/require.js"></script>
-	<script src="/js/lib/require.config.js"></script>
+	<script src="js/lib/require.js"></script>
+	<script src="js/lib/require.config.js"></script>
 	
 	
 	<script>
@@ -23,6 +23,8 @@
 			{		
 				require(['test/Site'], function (Main) {
 					var main = new Main($('#contextView'));
+
+					// 
 					$('body').css('display', 'block');
 				});
 			});
@@ -43,10 +45,10 @@
 
 
 	<body id="contextView">
-
-<script type="text/javascript">
-	document.getElementById("contextView").style.display = "none";// hide everything
-</script>		
+		<script type="text/javascript">
+			// if JS supported, hide everything
+			document.getElementById("contextView").style.display = "none";
+		</script>
 
 		<div id="projectDetail">
 		<?php $g->content(); ?>

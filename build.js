@@ -6,12 +6,12 @@
   skipDirOptimize:         true,
   preserveLicenseComments: false,
   removeCombined:          true,
-keepBuildDir: true, 
+  keepBuildDir: true,
 
   optimize: 'none',
 
   modules: [
     { name : "test/Site",     include: ["lib/almond"], exclude: ["jquery"] },
-    { name : "lib/giga/Giga", include: ["lib/almond"], exclude: ["jquery"] }
+    { name : "lib/giga/Giga",                          exclude: ["jquery"] }
   ],
 })
