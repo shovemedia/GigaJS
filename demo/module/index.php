@@ -11,11 +11,13 @@
 		<script src="/module/js/lib/require.config.js"></script>
 		
 		<script src="/module/js/lib/jquery-1.7.1.js"></script>	
+
+		<script src="/module/js/lib/giga/Giga.js"></script>
 		
 		<script>
 			$(function ()
 			{		
-				require(['lib/giga/Giga', 'test/Site'], function (Giga, Main) {
+				require(['test/Site'], function (Main) {
 					var main = new Main($('#contextView'));
 					$('body').css('display', 'block');
 				});
