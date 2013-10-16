@@ -66,7 +66,7 @@ You'll need to set the following paths in build.properties:
 
 <li>jsdoc-toolkit.dir — optional jsdoc tool. Used to generate documentation.
 	https://github.com/jsdoc3/jsdoc</li>
-<ul>
+</ul>
 
 <h3>Build</h3>
 from the command-line:
