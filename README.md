@@ -47,6 +47,10 @@ CustomTransitions
 
 See /demo/module/js/Site.js 
 
+<h4>Live Demos</h4>
+<a href="http://shovemedia.com/giga/site">http://shovemedia.com/giga/site</a><br />
+<a href="http://shovemedia.com/giga/module">http://shovemedia.com/giga/module</a>
+
 <h3>Site</h3>
 The demo in /demo/site uses Giga built as a full site.
 
