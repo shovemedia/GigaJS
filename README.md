@@ -23,6 +23,18 @@ Don't forget the .htaccess file — it routes all requests to index.php, the sit
 	<li>Normal navigation requests will be intercepted by giga; Giga JS will request your html content via AJAX.</li>
 </ul>
 
+If you're <em>not</em> installing into the root directory of your server, you'll need to make a few adjustments.
+
+For example, if you were installing into the /module folder (as the module demo does):
+
+.htaccess: RewriteBase /module
+require.config.js: baseUrl: "/module/js"
+index.php:
+	Pass the path to the php giga constructor: $g = new giga('module');
+	Make sure all the paths to script files are prefixed with /module. Remember, all deeplink requests
+	are routed through index.php so relative paths won't work.
+
+
 <h2>Demos!</h2>
 <h3>Module</h3>
 The demo in /demo/module uses Giga built as a module.
