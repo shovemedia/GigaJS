@@ -31,7 +31,7 @@ For example, if you were installing into the /module folder (as the module demo 
 <li>.htaccess: RewriteBase /module</li>
 <li>require.config.js: baseUrl: "/module/js"</li>
 <li>index.php:
-	Pass the path to the php giga constructor: $g = new giga('module');
+	Pass the path to the php giga constructor: $g = new giga('/module');
 	Make sure all the paths to script files are prefixed with /module. Remember, all deeplink requests
 	are routed through index.php so relative paths won't work.</li>
 </ul>	
