@@ -1296,19 +1296,27 @@
 				// We are in a if statement as when pushState is not emulated
 				// The actual url these short urls are relative to can change
 				// So within the same session, we the url may end up somewhere different
+
+				console.log ('History.getShortUrl IE ::  ' + 'shortUrl: ' + shortUrl  + '  baseUrl ' + baseUrl );
+
 				shortUrl = shortUrl.replace(baseUrl,'');
 			}
 
 			// Trim rootUrl
 			shortUrl = shortUrl.replace(rootUrl,'/');
 
+			console.log('short url pre: ', shortUrl);
+
 			// Ensure we can still detect it as a state
-			if ( History.isTraditionalAnchor(shortUrl) ) {
-				shortUrl = './'+shortUrl;
+			if ( History.isTraditionalAnchor(shortUrl) ) {		
+			
+			//	shortUrl = './'+shortUrl;
 			}
 
 			// Clean It
 			shortUrl = shortUrl.replace(/^(\.\/)+/g,'./').replace(/\#$/,'');
+
+			console.log('short url post: ', shortUrl);
 
 			// Return
 			return shortUrl;

@@ -158,7 +158,8 @@
         <echo message="${dist.module.min.name} built." />
     </target>
 
-    <target name="minifySite" depends="stripLogSite, lintSite">
+    <!-- stripLogSite, -->
+    <target name="minifySite" depends=" lintSite">
         <echo message="Building ${dist.site.min.name}..." />
 
         <jscomp compilationLevel="simple" debug="false" output="${build.dir}/${site.dir}${dist.site.min.name}">
@@ -253,7 +254,7 @@
 		</copy>
  </target>
 
-    <!--  buildDemo,  -->
+    <!--    -->
     <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, buildCSS, clean, beep">
         <echo message="Build Complete." />
     </target>

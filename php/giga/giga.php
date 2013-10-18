@@ -10,7 +10,7 @@ class giga
 		$this->dataClass = 'data.php';
 		$this->datafile = 'data.html';
 
-		require_once( $this->root . '/' . $this->gigaroot . '/giga/' . $this->dataClass);
+		require_once( $this->root . $this->gigaroot . '/giga/' . $this->dataClass);
 
 		
 		//$_SERVER['REQUEST_URI']
@@ -45,7 +45,7 @@ class giga
 						$this->dir .= '/' . $path_parts['filename'];
 						//echo 'B: '. $this->dir .'#';
 					}	
-					$this->dir = str_replace( '/' . $this->gigaroot, '', $this->dir);
+					$this->dir = str_replace( $this->gigaroot, '', $this->dir);
 				//}		
 				
 				//dir = dirname($this->root . $request);
@@ -58,7 +58,7 @@ class giga
 			if(
 				substr($request, -strlen($this->dataClass)) === $this->dataClass)
 			{
-				$file = dirname($this->root . '/' . $this->gigaroot . $this->dir) .'/'. $this->datafile;//Class, '.php') . '.html';
+				$file = dirname($this->root . $this->gigaroot . $this->dir) .'/'. $this->datafile;//Class, '.php') . '.html';
 
 				//echo "XXX file: " . $file . "\n";
 
@@ -77,6 +77,8 @@ class giga
 
 			$path = '';
 
+			echo '<div class="gigaContent" data-rel="' . $this->gigaroot . '"></div>';
+
 			foreach($dir_array as $folder)
 			{
 				$path .=  $folder . '/';
@@ -86,7 +88,7 @@ class giga
 				// echo '<br/>';
 				// echo $request . ' ### ' . $this->root . '/' . $this->gigaroot .  $path  . $this->datafile . "\n";
 
-				new data($this->root . '/' . $this->gigaroot .  $path  . $this->datafile);
+				new data($this->root . $this->gigaroot .  $path  . $this->datafile);
 				
 				if ($this->dir == '/')
 				{

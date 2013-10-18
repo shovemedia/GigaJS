@@ -1,6 +1,6 @@
 <?php 
 	include('giga/giga.php'); 
-	$g = new giga('module');
+	$g = new giga('/module');
 ?>
 <!DOCTYPE html>
 <html>

@@ -80,12 +80,20 @@ define(function(require){
 
 		var State = History.getState(); 
 
-		var href = History.getShortUrl(State.url);
+		//	var href = History.getShortUrl(State.url);
+
+		var full = History.getFullUrl(State.url);
+		var root = History.getRootUrl();
+		var href = '/' + full.replace(root, '');
+
+		//strip anchor if present
+		href = href.replace('#', '');
+
 				console.log('= = =');
 				console.log('replace: ', href);
 				console.log('= = =');
 
-		History.replaceState(null, title, href);
+//		History.replaceState(null, null, full); //href
 		document.title = title;
 
 		deferred.resolve($(x));

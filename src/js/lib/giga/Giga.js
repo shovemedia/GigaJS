@@ -7,6 +7,9 @@ define(function(require){
 	var FlowController = require('lib/giga/FlowController');
 	var TransitionController = require('lib/giga/TransitionController');
 
+
+
+
 	var Giga = function($context, $hidden)
 	{
 		var self = this;
@@ -19,16 +22,45 @@ define(function(require){
 
 		this.transitionController = new TransitionController(this);
 
-		this.currentBranch = '/';
+		this.siteRoot = $('.gigaContent').data('rel');
+		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
 		this.rootChangeBranch = null;
 
 		History.Adapter.bind(window, 'statechange', function() {
-			var State = History.getState(); 
-			History.log(State.data, State.title, State.url);
 
-			self.gotoBranch(History.getShortUrl(State.url));	
+//	if(window.printStackTrace)
+//	{
+//		console.log(printStackTrace());
+//		//	for (var i=0, len=trace.length; i<len; i++)
+//		//	{
+//		//		console.log(trace[i]);
+//		//	}
+//	}	
+
+			var State = History.getState(); 
+			//History.log(State.data, State.title, State.url);
+
+			console.log('statechange');
+			console.log(State.url);
+			console.log('short: ' + History.getShortUrl(State.url));
+			console.log('full: ' + History.getFullUrl(State.url));
+			console.log('root: ' + History.getRootUrl());
+			console.log('base: ' + History.getBaseHref());
+			console.log('getBaseUrl: ' + History.getBaseUrl());
+			console.log('getPageUrl: ' + History.getPageUrl());
+			console.log('getBasePageUrl: ' + History.getBasePageUrl());			
+
+			//History.getShortUrl(State.url)
+
+//	full: http://shovemedia.com/giga/site/project1 
+//	root: http://shovemedia.com/ 
+
+			var full = History.getFullUrl(State.url);
+			var root = History.getRootUrl();
+			var loc = full.replace(root, '');
+			self.gotoBranch(loc);	
 		});
 	};
 
@@ -104,6 +136,10 @@ define(function(require){
 			//console.log('preload step hold!');
 			step.hold();
 
+			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
+
+			//	console.log ('preload: ', url)
+
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
 			promise.then(function(x){
@@ -123,12 +159,109 @@ define(function(require){
 			self.navigateTo(self.targetBranch); //
 		});
 
-		this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+		console.log('INIT: ', History.getLocationHref() );
+			console.log('short: ' + History.getShortUrl(History.getLocationHref()));
+			console.log('full: ' + History.getFullUrl(History.getLocationHref()));
+			console.log('root: ' + History.getRootUrl());
+			console.log('base: ' + History.getBaseHref());
+			console.log('getBaseUrl: ' + History.getBaseUrl());
+			console.log('getPageUrl: ' + History.getPageUrl());
+			console.log('getBasePageUrl: ' + History.getBasePageUrl());		
+
+			var full = History.getFullUrl(History.getLocationHref());
+			var root = History.getRootUrl();
+
+		var anchor = History.getHash(); // window.location.hash.substring(1);
+
+		console.log('anchor: ', anchor);
+
+		var loc = full.replace(root, ''); //root
+		var siteRoot = this.siteRoot; 	
+
+		if (History.emulated.pushState)
+		{
+			//HTML4
+				
+			//	#/one/two -> goto
+			//	/one/two -> #/one/two
+
+			if (anchor.length > 0)
+			{
+				console.log ("TEST: " + '/' + loc +  '  vs  ' +   siteRoot + '/' + '#' + anchor);
+
+//    /giga/site/#/project2/pic1/  vs  /giga/site/ 
+
+				if('/' + loc == siteRoot + '/' + '#' + anchor)
+				{
+					//alert('goto anchor: ' + siteRoot + '/' + anchor);
+					this.gotoBranch(siteRoot + '/' + anchor);
+				}
+				else
+				{
+					var newLoc = siteRoot + '#' + anchor;
+					//alert('A: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;
+				}	
+			}
+			else
+			{
+				loc = this.normalizeBranch(loc).replace(siteRoot, '');
+
+				if (loc == '/')
+				{
+					//alert('C: goto branch ' + siteRoot + loc);
+					this.gotoBranch(siteRoot + loc);
+				}	
+				else
+				{
+					// + '.'
+					var newLoc = siteRoot + '#' + loc;
+					//	alert('B: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;					
+				}
+			}
+		}
+		else
+		{
+			//HTML5
+				
+			//	#/one/two -> /one/two
+			//	/one/two -> goto
+
+			if (anchor.length > 0)
+			{
+				//	if(loc == '/' + siteRoot + '#' + anchor)
+				//	{
+				//		this.gotoBranch(anchor);
+				//	}
+				//	else
+				//	{
+					window.location.href = this.normalizeBranch(siteRoot)  + anchor;
+					return;
+				//	}	
+			}
+			else
+			{
+				this.gotoBranch('/' + loc);
+			}
+
+			
+		}
+
+			
+
+		//this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+
+
 	};
 
 
 	p.getSelectorForBranch = function(branch)
 	{
+		console.log('getSelectorForBranch ' , branch);
+
 		var selector = '';
 
 		var the_arr = branch.split('/');
@@ -137,10 +270,14 @@ define(function(require){
 
 	    do
 	    {	
-			//	console.log('****')
-			//	console.log(branch, the_arr);		    
+			console.log('****')
+			console.log(branch)
+			console.log(the_arr);
+			console.log(the_arr.join('/'))
+			console.log('****');
+
 		    //	the_arr.pop();
-			var relContext = the_arr.join('/') + '/';
+			var relContext = this.normalizeBranch( the_arr.join('/'));
 
 			if (selector != '')
 			{
@@ -150,6 +287,8 @@ define(function(require){
 			selector += 'div[data-rel="' + relContext + '"]';
 		}
 		while(the_arr.pop())
+
+		console.log('selector', selector);
 
 		return selector;
 	}
@@ -235,12 +374,18 @@ define(function(require){
 
 	p.navigateTo = function(branch)
 	{
+		//	if (History.emulated.pushState)
+		//	{
+		//		console.log('pre ', branch);
+		//		branch = this.siteRoot + branch;
+		//		console.log('post ', branch);
+		//	}
+
 		if (this.transitioningBranch != branch)
 		{
 			this.transitioningBranch = branch;
 
-
-			console.log('navigate', 'from', this.currentBranch, 'to', this.transitioningBranch);
+			console.log('navigateTo :: ', ' from ', this.currentBranch, ' to ', this.transitioningBranch);
 
 			var currentBranchArray = this.currentBranch.split('/');
 			var transitioningBranchArray = this.transitioningBranch.split('/');
@@ -249,7 +394,7 @@ define(function(require){
 
 			for (var i=0, len = transitioningBranchArray.length; i<len; i++)
 			{
-				this.rootChangeBranch += transitioningBranchArray[i] + '/';
+				this.rootChangeBranch = this.normalizeBranch(this.rootChangeBranch + transitioningBranchArray[i]);
 				if (currentBranchArray[i] != transitioningBranchArray[i])
 				{
 					break;
@@ -279,6 +424,12 @@ define(function(require){
 		if (branch.indexOf('/', branch.length - 1) == -1)
 		{
 			branch += '/';
+		}
+
+		//force start with '/'
+		if (branch.indexOf('/') > 0)
+		{
+			branch = '/' + branch;
 		}	
 
 		return branch;

@@ -2043,19 +2043,27 @@ define('lib/jquery.withSelf',['jquery'],function(){
 				// We are in a if statement as when pushState is not emulated
 				// The actual url these short urls are relative to can change
 				// So within the same session, we the url may end up somewhere different
+
+				console.log ('History.getShortUrl IE ::  ' + 'shortUrl: ' + shortUrl  + '  baseUrl ' + baseUrl );
+
 				shortUrl = shortUrl.replace(baseUrl,'');
 			}
 
 			// Trim rootUrl
 			shortUrl = shortUrl.replace(rootUrl,'/');
 
+			console.log('short url pre: ', shortUrl);
+
 			// Ensure we can still detect it as a state
-			if ( History.isTraditionalAnchor(shortUrl) ) {
-				shortUrl = './'+shortUrl;
+			if ( History.isTraditionalAnchor(shortUrl) ) {		
+			
+			//	shortUrl = './'+shortUrl;
 			}
 
 			// Clean It
 			shortUrl = shortUrl.replace(/^(\.\/)+/g,'./').replace(/\#$/,'');
+
+			console.log('short url post: ', shortUrl);
 
 			// Return
 			return shortUrl;
@@ -3581,8 +3589,8 @@ define('lib/giga/StateMachine',['require','lib/signals'],function(require){
 		try{
 			return this.transitionsFor[this.state][event];
 		} catch(exception) {
-			
-				
+			console.log('event', event);
+				console.log('transitions', this.transitionsFor, this.state);
 			throw new Error("Invalid Event");
 		}
 	};
@@ -3657,7 +3665,7 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 
 	p.holdAction = function()
 	{
-		
+		console.log('holdAction');
 		this.holds++;
 	}
 
@@ -3667,7 +3675,7 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 	}
 	p.releaseAction = function()
 	{
-		
+		console.log('releaseAction');
 		this.holds--;
 		this.check();
 	};
@@ -3686,15 +3694,15 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 
 	p.check = function()
 	{
-		
+		console.log('step check', this.name);
 		if (!this.waiting())
 		{
-			
+			console.log('step next!', this.name);
 			this.next();
 		}
     else
     {
-      
+      console.log('holds', this.holds, this.name)
     }
 	};
 
@@ -3889,28 +3897,28 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 		var self = this;
 
 		this.stateMachine.on.transitionOut.add(function(){
-			
+			console.log('SiteController transition out', self);
 			self.currentStep = self.transitionOutStep;
 			self.on.transitionOut.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.preload.add(function(){
-			
+			console.log('SiteController preload');
 			self.currentStep = self.preloadStep;
 			self.on.preload.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.transitionIn.add(function(){
-			
+			console.log('SiteController transition in');
 			self.currentStep = self.transitionInStep;
 			self.on.transitionIn.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.complete.add(function(){
-			
+			console.log('SiteController complete');
 			self.currentStep = null;
 			self.stateMachine.trigger('reset');
 			self.on.complete.dispatch();
@@ -3922,21 +3930,21 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 		var self = this;
 
 		this.stateMachine.on.preload.add(function(){
-			
+			console.log('SiteController preload');
 			self.currentStep = self.preloadStep;
 			self.on.preload.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.transition.add(function(){
-			
+			console.log('SiteController transition');
 			self.currentStep = self.transitionInStep;
 			self.on.transitionCross.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.complete.add(function(){
-			
+			console.log('SiteController complete');
 			self.currentStep = null;
 			self.stateMachine.trigger('reset');
 			self.on.complete.dispatch();
@@ -3959,7 +3967,7 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 
 	p.nextStep = function()
 	{
-		
+		console.log ('SiteController state', this.stateMachine.state);
 		this.stateMachine.trigger('continue');
 	};
 
@@ -5616,7 +5624,7 @@ define('lib/tween/TweenLite',['require'],function(require){
 			}
 			for (p in _defLookup) {
 				if (!_defLookup[p].func) {
-					
+					window.console.log("GSAP encountered missing dependency: com.greensock." + p);
 				}
 			}
 		}
@@ -6073,7 +6081,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 			},
 			_log = function(s) {//for logging messages, but in a way that won't throw errors in old versions of IE.
 				if (window.console) {
-					
+					console.log(s);
 				}
 			},
 			_prefixCSS = "", //the non-camelCase vendor prefix like "-o-", "-moz-", "-ms-", or "-webkit-"
@@ -6899,7 +6907,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 				}
 			},
 
-			//creates a placeholder special prop for a plugin so that the property gets caught the first time a tween of it is attempted, and at that time it makes the plugin register itself, thus taking over for all future tweens of that property. This allows us to not mandate that things load in a particular order and it also allows us to  an error that informs the user when they attempt to tween an external plugin-related property without loading its .js file.
+			//creates a placeholder special prop for a plugin so that the property gets caught the first time a tween of it is attempted, and at that time it makes the plugin register itself, thus taking over for all future tweens of that property. This allows us to not mandate that things load in a particular order and it also allows us to log() an error that informs the user when they attempt to tween an external plugin-related property without loading its .js file.
 			_registerPluginProp = function(p) {
 				if (!_specialProps[p]) {
 					var pluginName = p.charAt(0).toUpperCase() + p.substr(1) + "Plugin";
@@ -6988,7 +6996,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 		 *      var start = target.style.width;
 		 *      return function(ratio) {
 		 *              target.style.width = (start + value * ratio) + "px";
-		 *              
+		 *              console.log("set width to " + target.style.width);
 		 *          }
 		 * }, 0);
 		 *
@@ -8233,7 +8241,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.getTransitionSequence = function(inOutAttribute, $content, step)
 	{
-		
+		console.log ('transition sequence', inOutAttribute, $content, step);
 
 		if ($content != undefined)
 		{
@@ -8242,14 +8250,14 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			var transitionList = [];
 
 			$content.each(function(i){
-				
+				console.log('each', i)
 				var $item = $(this);
 				var transition = self.getTransitionStep(inOutAttribute, i, transitionList, step, $item);
 
 				transitionList.push(transition);				
 			});
 
-			
+			console.log('transitionList', transitionList);
 
 			return transitionList;
 		}
@@ -8257,7 +8265,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.getTransitionStep = function(inOutAttribute, i, transitionList, step, $item)
 	{
-		
+		console.log('getTransitionStep', inOutAttribute, i, transitionList, step, $item);
 
 		var self = this;
 
@@ -8312,7 +8320,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			transitionName = this['default' + inOutAttribute];
 		}
 
-		
+		console.log('transitionName', transitionName);
 
 		return function(){
 			self.transitions[transitionName]($item, onStart, onComplete);
@@ -8322,7 +8330,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 	p.registerTransitions = function(clazz)
 	{
 		this.transitions = new clazz(this);
-		
+		console.log(this.transitions);
 
 		//	for (var i in obj)
 		//	{
@@ -8341,6 +8349,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	var FlowController = require('lib/giga/FlowController');
 	var TransitionController = require('lib/giga/TransitionController');
 
+
+
+
 	var Giga = function($context, $hidden)
 	{
 		var self = this;
@@ -8353,16 +8364,45 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 		this.transitionController = new TransitionController(this);
 
-		this.currentBranch = '/';
+		this.siteRoot = $('.gigaContent').data('rel');
+		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
 		this.rootChangeBranch = null;
 
 		History.Adapter.bind(window, 'statechange', function() {
-			var State = History.getState(); 
-			History.log(State.data, State.title, State.url);
 
-			self.gotoBranch(History.getShortUrl(State.url));	
+//	if(window.printStackTrace)
+//	{
+//		console.log(printStackTrace());
+//		//	for (var i=0, len=trace.length; i<len; i++)
+//		//	{
+//		//		console.log(trace[i]);
+//		//	}
+//	}	
+
+			var State = History.getState(); 
+			//History.log(State.data, State.title, State.url);
+
+			console.log('statechange');
+			console.log(State.url);
+			console.log('short: ' + History.getShortUrl(State.url));
+			console.log('full: ' + History.getFullUrl(State.url));
+			console.log('root: ' + History.getRootUrl());
+			console.log('base: ' + History.getBaseHref());
+			console.log('getBaseUrl: ' + History.getBaseUrl());
+			console.log('getPageUrl: ' + History.getPageUrl());
+			console.log('getBasePageUrl: ' + History.getBasePageUrl());			
+
+			//History.getShortUrl(State.url)
+
+//	full: http://shovemedia.com/giga/site/project1 
+//	root: http://shovemedia.com/ 
+
+			var full = History.getFullUrl(State.url);
+			var root = History.getRootUrl();
+			var loc = full.replace(root, '');
+			self.gotoBranch(loc);	
 		});
 	};
 
@@ -8396,7 +8436,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 		this.siteController.on.transitionCross.add(function(step){
 
-			
+			console.log('transitionCross');
 
 			var $contentOut = self.getOutgoingContent(self.transitioningBranch);
 			var $contentIn = self.getIngoingContent(self.transitioningBranch);
@@ -8435,13 +8475,17 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	
 
 		this.siteController.on.preload.add(function(step){
-			//
+			//console.log('preload step hold!');
 			step.hold();
+
+			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
+
+			//	console.log ('preload: ', url)
 
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
 			promise.then(function(x){
-				//
+				//console.log('preload step release!');
 
 				if (x.parent().length == 0)
 				{
@@ -8457,12 +8501,109 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			self.navigateTo(self.targetBranch); //
 		});
 
-		this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+		console.log('INIT: ', History.getLocationHref() );
+			console.log('short: ' + History.getShortUrl(History.getLocationHref()));
+			console.log('full: ' + History.getFullUrl(History.getLocationHref()));
+			console.log('root: ' + History.getRootUrl());
+			console.log('base: ' + History.getBaseHref());
+			console.log('getBaseUrl: ' + History.getBaseUrl());
+			console.log('getPageUrl: ' + History.getPageUrl());
+			console.log('getBasePageUrl: ' + History.getBasePageUrl());		
+
+			var full = History.getFullUrl(History.getLocationHref());
+			var root = History.getRootUrl();
+
+		var anchor = History.getHash(); // window.location.hash.substring(1);
+
+		console.log('anchor: ', anchor);
+
+		var loc = full.replace(root, ''); //root
+		var siteRoot = this.siteRoot; 	
+
+		if (History.emulated.pushState)
+		{
+			//HTML4
+				
+			//	#/one/two -> goto
+			//	/one/two -> #/one/two
+
+			if (anchor.length > 0)
+			{
+				console.log ("TEST: " + '/' + loc +  '  vs  ' +   siteRoot + '/' + '#' + anchor);
+
+//    /giga/site/#/project2/pic1/  vs  /giga/site/ 
+
+				if('/' + loc == siteRoot + '/' + '#' + anchor)
+				{
+					alert('goto anchor: ' + siteRoot + '/' + anchor);
+					this.gotoBranch(siteRoot + '/' + anchor);
+				}
+				else
+				{
+					var newLoc = siteRoot + '#' + anchor;
+					alert('A: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;
+				}	
+			}
+			else
+			{
+				loc = this.normalizeBranch(loc).replace(siteRoot, '');
+
+				if (loc == '/')
+				{
+					alert('C: goto branch ' + siteRoot + loc);
+					this.gotoBranch(siteRoot + loc);
+				}	
+				else
+				{
+					// + '.'
+					var newLoc = siteRoot + '#' + loc;
+					alert('B: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;					
+				}
+			}
+		}
+		else
+		{
+			//HTML5
+				
+			//	#/one/two -> /one/two
+			//	/one/two -> goto
+
+			if (anchor.length > 0)
+			{
+				//	if(loc == '/' + siteRoot + '#' + anchor)
+				//	{
+				//		this.gotoBranch(anchor);
+				//	}
+				//	else
+				//	{
+					window.location.href = this.normalizeBranch(siteRoot)  + anchor;
+					return;
+				//	}	
+			}
+			else
+			{
+				this.gotoBranch('/' + loc);
+			}
+
+			
+		}
+
+			
+
+		//this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+
+
 	};
 
 
 	p.getSelectorForBranch = function(branch)
 	{
+		console.log('getSelectorForBranch ' , branch);
+
 		var selector = '';
 
 		var the_arr = branch.split('/');
@@ -8471,10 +8612,14 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	    do
 	    {	
-			//	
-			//			    
+			console.log('****')
+			console.log(branch)
+			console.log(the_arr);
+			console.log(the_arr.join('/'))
+			console.log('****');
+
 		    //	the_arr.pop();
-			var relContext = the_arr.join('/') + '/';
+			var relContext = this.normalizeBranch( the_arr.join('/'));
 
 			if (selector != '')
 			{
@@ -8485,13 +8630,15 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		}
 		while(the_arr.pop())
 
+		console.log('selector', selector);
+
 		return selector;
 	}
 
 	p.getOutgoingContent = function(branch)
 	{
 		//	var relContext = $x.data('rel');
-//		
+//		console.log('relContext pre', relContext);
 
 		var selector = this.getSelectorForBranch(branch);
     
@@ -8499,7 +8646,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 		var $outgoing = $('div[data-rel]').not(selector).not(this.$hidden.children());
 
-		//
+		//console.log('getOutgoingContent', 'for', branch, 'is !', selector, $outgoing);
 
 		return $outgoing
 	};
@@ -8508,15 +8655,15 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	{
 		var selector = this.getSelectorForBranch(branch);
 
-		
+		console.log('selector', selector)
 
 		var $ingoing = $(selector, this.$hidden);
-		//
+		//console.log('getIngoingContent', 'is', selector, $ingoing);
 
-		//
+		//console.log('HIDDEN: ', this.$hidden.html());
 
 		//	$ingoing.each(function(i){
-		//		
+		//		console.log(i, $(this).html())
 		//	});
 
 		//	alert('holdup')
@@ -8527,20 +8674,20 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	p.setPreloadController = function(clazz)
 	{
-		//	
+		//	console.log ('preload controller', x);
 		this.preloadController = new clazz(this.$context)
 	};
 
 	p.setContentRenderer = function(clazz)
 	{
-		//	
+		//	console.log ('content renderer', x);
 		this.contentRenderer = new clazz(this.$context, this.$hidden);
 		this.contentRenderer.init();
 	};
 
 	p.registerTransitions = function(x)
 	{
-		//	
+		//	console.log ('xition controller', x);
 		this.transitionController.registerTransitions(x);
 	};
 
@@ -8555,7 +8702,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		
 		if (this.targetBranch != branch)
 		{
-			
+			console.log('Giga goto', 'branch', branch, 'targetBranch', this.targetBranch);
 			//console.trace();
 
 			this.targetBranch = branch;
@@ -8569,12 +8716,18 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	p.navigateTo = function(branch)
 	{
+		//	if (History.emulated.pushState)
+		//	{
+		//		console.log('pre ', branch);
+		//		branch = this.siteRoot + branch;
+		//		console.log('post ', branch);
+		//	}
+
 		if (this.transitioningBranch != branch)
 		{
 			this.transitioningBranch = branch;
 
-
-			
+			console.log('navigateTo :: ', ' from ', this.currentBranch, ' to ', this.transitioningBranch);
 
 			var currentBranchArray = this.currentBranch.split('/');
 			var transitioningBranchArray = this.transitioningBranch.split('/');
@@ -8583,14 +8736,14 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			for (var i=0, len = transitioningBranchArray.length; i<len; i++)
 			{
-				this.rootChangeBranch += transitioningBranchArray[i] + '/';
+				this.rootChangeBranch = this.normalizeBranch(this.rootChangeBranch + transitioningBranchArray[i]);
 				if (currentBranchArray[i] != transitioningBranchArray[i])
 				{
 					break;
 				}	
 			}
 
-			
+			console.log('rootChangeBranch', this.rootChangeBranch);
 
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
 			if (pageFlow != undefined)
@@ -8613,6 +8766,12 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		if (branch.indexOf('/', branch.length - 1) == -1)
 		{
 			branch += '/';
+		}
+
+		//force start with '/'
+		if (branch.indexOf('/') > 0)
+		{
+			branch = '/' + branch;
 		}	
 
 		return branch;
@@ -9598,7 +9757,7 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 			var url = $item.data('rel');
 			var $content = $item;//.withSelf('div');
 
-			
+			console.log('prime cache:', url, $content.html())
 
 			var deferred = Q.defer();
 			deferred.resolve($content);
@@ -9623,7 +9782,7 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 	p.fetchContent = function(url, deferred)
 	{
-		
+		console.log('fetchContent', url);
 
 		var self = this;
 
@@ -9640,19 +9799,27 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 	{
 		this.cache[url] = deferred.promise;
 
-		
+		console.log('ok', x);
 
 		var data = x;
 		var title = 'Title: ' + url;
 
 		var State = History.getState(); 
 
-		var href = History.getShortUrl(State.url);
-				
-				
-				
+		//	var href = History.getShortUrl(State.url);
 
-		History.replaceState(null, title, href);
+		var full = History.getFullUrl(State.url);
+		var root = History.getRootUrl();
+		var href = '/' + full.replace(root, '');
+
+		//strip anchor if present
+		href = href.replace('#', '');
+
+				console.log('= = =');
+				console.log('replace: ', href);
+				console.log('= = =');
+
+//		History.replaceState(null, null, full); //href
 		document.title = title;
 
 		deferred.resolve($(x));
@@ -9698,16 +9865,16 @@ define('ContentRenderer',['require','jquery','lib/jquery.withSelf'],function(req
 
 		context.withSelf('a.nav').each(function(){
 			var navLink = $(this);
-			// 
+			// console.log('nav link', navLink)
 
 			navLink.click(function(event){
 				event.preventDefault();
 				
 				var href = navLink.attr('href');
 
-				
-				
-				
+				console.log('= = =');
+				console.log('push: ', href);
+				console.log('= = =');
 
 				History.pushState(null, null, href);
 
@@ -9731,7 +9898,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 	
 
 	var PortfolioTransitions = function(transitionManager){
-		
+		console.log('new PortfolioTransitions');
 		this.transitionManager = transitionManager;
 	}
 
@@ -9739,7 +9906,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.fadeIn = function($content, onStart, onComplete)
 	{
-		
+		console.log('fadeIn')
 
 		//, border: '1px solid green'
 		$content.css({opacity: 0});
@@ -9753,7 +9920,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.fadeOut = function($content, onStart, onComplete)
 	{
-		
+		console.log('fadeOut');
 
 		//, border: '1px solid red'
 		$content.css({opacity: 1});
@@ -9769,7 +9936,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.listIn = function($content, onStart, onComplete)
 	{
-		
+		console.log('listIn')
 
 		$content.css({
 			position: 'relative',
@@ -9785,7 +9952,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.listOut = function($content, onStart, onComplete)
 	{
-		
+		console.log('listOut');
 
 		$content.css({
 			position: 'relative',
@@ -9801,7 +9968,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.projectIn = function($content, onStart, onComplete)
 	{
-		
+		console.log('projectIn')
 
 		if (onStart != undefined)
 		{
@@ -9818,7 +9985,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
 
 	p.projectOut =  function($content, onStart, onComplete)
 	{
-		
+		console.log('projectOut');
 
 		if (onStart != undefined)
 		{

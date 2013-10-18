@@ -1717,19 +1717,27 @@
 				// We are in a if statement as when pushState is not emulated
 				// The actual url these short urls are relative to can change
 				// So within the same session, we the url may end up somewhere different
+
+				
+
 				shortUrl = shortUrl.replace(baseUrl,'');
 			}
 
 			// Trim rootUrl
 			shortUrl = shortUrl.replace(rootUrl,'/');
 
+			
+
 			// Ensure we can still detect it as a state
-			if ( History.isTraditionalAnchor(shortUrl) ) {
-				shortUrl = './'+shortUrl;
+			if ( History.isTraditionalAnchor(shortUrl) ) {		
+			
+			//	shortUrl = './'+shortUrl;
 			}
 
 			// Clean It
 			shortUrl = shortUrl.replace(/^(\.\/)+/g,'./').replace(/\#$/,'');
+
+			
 
 			// Return
 			return shortUrl;
@@ -8015,6 +8023,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	var FlowController = require('lib/giga/FlowController');
 	var TransitionController = require('lib/giga/TransitionController');
 
+
+
+
 	var Giga = function($context, $hidden)
 	{
 		var self = this;
@@ -8027,16 +8038,45 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 		this.transitionController = new TransitionController(this);
 
-		this.currentBranch = '/';
+		this.siteRoot = $('.gigaContent').data('rel');
+		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
 		this.rootChangeBranch = null;
 
 		History.Adapter.bind(window, 'statechange', function() {
-			var State = History.getState(); 
-			History.log(State.data, State.title, State.url);
 
-			self.gotoBranch(History.getShortUrl(State.url));	
+//	if(window.printStackTrace)
+//	{
+//		
+//		//	for (var i=0, len=trace.length; i<len; i++)
+//		//	{
+//		//		
+//		//	}
+//	}	
+
+			var State = History.getState(); 
+			//History.log(State.data, State.title, State.url);
+
+			
+			
+			
+			
+			
+			
+			
+			
+						
+
+			//History.getShortUrl(State.url)
+
+//	full: http://shovemedia.com/giga/site/project1 
+//	root: http://shovemedia.com/ 
+
+			var full = History.getFullUrl(State.url);
+			var root = History.getRootUrl();
+			var loc = full.replace(root, '');
+			self.gotoBranch(loc);	
 		});
 	};
 
@@ -8112,6 +8152,10 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			//
 			step.hold();
 
+			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
+
+			//	
+
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
 			promise.then(function(x){
@@ -8131,12 +8175,109 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			self.navigateTo(self.targetBranch); //
 		});
 
-		this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+		
+			
+			
+			
+			
+			
+			
+					
+
+			var full = History.getFullUrl(History.getLocationHref());
+			var root = History.getRootUrl();
+
+		var anchor = History.getHash(); // window.location.hash.substring(1);
+
+		
+
+		var loc = full.replace(root, ''); //root
+		var siteRoot = this.siteRoot; 	
+
+		if (History.emulated.pushState)
+		{
+			//HTML4
+				
+			//	#/one/two -> goto
+			//	/one/two -> #/one/two
+
+			if (anchor.length > 0)
+			{
+				
+
+//    /giga/site/#/project2/pic1/  vs  /giga/site/ 
+
+				if('/' + loc == siteRoot + '/' + '#' + anchor)
+				{
+					alert('goto anchor: ' + siteRoot + '/' + anchor);
+					this.gotoBranch(siteRoot + '/' + anchor);
+				}
+				else
+				{
+					var newLoc = siteRoot + '#' + anchor;
+					alert('A: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;
+				}	
+			}
+			else
+			{
+				loc = this.normalizeBranch(loc).replace(siteRoot, '');
+
+				if (loc == '/')
+				{
+					alert('C: goto branch ' + siteRoot + loc);
+					this.gotoBranch(siteRoot + loc);
+				}	
+				else
+				{
+					// + '.'
+					var newLoc = siteRoot + '#' + loc;
+					alert('B: window.location.href = ' + newLoc);
+					window.location.href = newLoc;
+					return;					
+				}
+			}
+		}
+		else
+		{
+			//HTML5
+				
+			//	#/one/two -> /one/two
+			//	/one/two -> goto
+
+			if (anchor.length > 0)
+			{
+				//	if(loc == '/' + siteRoot + '#' + anchor)
+				//	{
+				//		this.gotoBranch(anchor);
+				//	}
+				//	else
+				//	{
+					window.location.href = this.normalizeBranch(siteRoot)  + anchor;
+					return;
+				//	}	
+			}
+			else
+			{
+				this.gotoBranch('/' + loc);
+			}
+
+			
+		}
+
+			
+
+		//this.gotoBranch(History.getShortUrl(History.getLocationHref()));
+
+
 	};
 
 
 	p.getSelectorForBranch = function(branch)
 	{
+		
+
 		var selector = '';
 
 		var the_arr = branch.split('/');
@@ -8145,10 +8286,14 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	    do
 	    {	
-			//	
-			//			    
+			
+			
+			
+			
+			
+
 		    //	the_arr.pop();
-			var relContext = the_arr.join('/') + '/';
+			var relContext = this.normalizeBranch( the_arr.join('/'));
 
 			if (selector != '')
 			{
@@ -8158,6 +8303,8 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			selector += 'div[data-rel="' + relContext + '"]';
 		}
 		while(the_arr.pop())
+
+		
 
 		return selector;
 	}
@@ -8243,10 +8390,16 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	p.navigateTo = function(branch)
 	{
+		//	if (History.emulated.pushState)
+		//	{
+		//		
+		//		branch = this.siteRoot + branch;
+		//		
+		//	}
+
 		if (this.transitioningBranch != branch)
 		{
 			this.transitioningBranch = branch;
-
 
 			
 
@@ -8257,7 +8410,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			for (var i=0, len = transitioningBranchArray.length; i<len; i++)
 			{
-				this.rootChangeBranch += transitioningBranchArray[i] + '/';
+				this.rootChangeBranch = this.normalizeBranch(this.rootChangeBranch + transitioningBranchArray[i]);
 				if (currentBranchArray[i] != transitioningBranchArray[i])
 				{
 					break;
@@ -8287,6 +8440,12 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		if (branch.indexOf('/', branch.length - 1) == -1)
 		{
 			branch += '/';
+		}
+
+		//force start with '/'
+		if (branch.indexOf('/') > 0)
+		{
+			branch = '/' + branch;
 		}	
 
 		return branch;
