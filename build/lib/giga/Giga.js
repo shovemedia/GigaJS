@@ -8015,6 +8015,12 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	return TransitionController;
 });
+/** @license
+ * GigaJS <http://github.com/shovemedia/GigaJS>
+ * Released under the MIT license
+ * Author: Jon Williams
+ */
+
 define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteController','lib/giga/FlowController','lib/giga/TransitionController'],function(require){
 
 	var signals = require('lib/signals');

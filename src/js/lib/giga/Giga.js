@@ -1,3 +1,9 @@
+/** @license
+ * GigaJS <http://github.com/shovemedia/GigaJS>
+ * Released under the MIT license
+ * Author: Jon Williams
+ */
+
 define(function(require){
 
 	var signals = require('lib/signals');

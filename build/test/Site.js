@@ -8341,6 +8341,12 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	return TransitionController;
 });
+/** @license
+ * GigaJS <http://github.com/shovemedia/GigaJS>
+ * Released under the MIT license
+ * Author: Jon Williams
+ */
+
 define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteController','lib/giga/FlowController','lib/giga/TransitionController'],function(require){
 
 	var signals = require('lib/signals');
@@ -9754,10 +9760,10 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 	p.init = function()
 	{
-		this.primeCache($('div[data-rel]', this.$context));
+		this.cacheContent($('div[data-rel]', this.$context));
 	}
 
-	p.primeCache = function($content)
+	p.cacheContent = function($content)
 	{
 		var self = this;
 
@@ -9766,7 +9772,7 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 			var url = $item.data('rel');
 			var $content = $item;//.withSelf('div');
 
-			console.log('prime cache:', url, $content.html())
+			console.log('cache:', url, $content.html())
 
 			var deferred = Q.defer();
 			deferred.resolve($content);
@@ -9823,8 +9829,6 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 	{
 		//this.cache[url] = deferred.promise;
 
-
-
 		console.log('ok', x);
 
 		var data = x;
@@ -9850,11 +9854,7 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		var $content = $(x);
 
-		var foo = $content.filter('div[data-rel]');
-
-		console.log ('foo', foo);
-
-		this.primeCache(foo);
+		this.cacheContent($content.filter('div[data-rel]'));
 
 		deferred.resolve($content);
 	};
