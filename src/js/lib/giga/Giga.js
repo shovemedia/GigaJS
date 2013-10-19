@@ -195,11 +195,14 @@ define(function(require){
 				{
 					//alert('goto anchor: ' + siteRoot + '/' + anchor);
 					this.gotoBranch(siteRoot + '/' + anchor);
+
+					//IE < 10 will "eat" the hash if we got here via redirect!
+					window.document.location.href = window.document.URL;
 				}
 				else
 				{
-					var newLoc = siteRoot + '#' + anchor;
-					//alert('A: window.location.href = ' + newLoc);
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + anchor;
+					//	alert('A: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;
 				}	
@@ -216,7 +219,7 @@ define(function(require){
 				else
 				{
 					// + '.'
-					var newLoc = siteRoot + '#' + loc;
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + loc.substring(1);
 					//	alert('B: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;					
@@ -404,6 +407,9 @@ define(function(require){
 			console.log('rootChangeBranch', this.rootChangeBranch);
 
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
+
+			this.preloadController.rootChangeBranch = this.rootChangeBranch;
+
 			if (pageFlow != undefined)
 			{
 				this.siteController.init(pageFlow);

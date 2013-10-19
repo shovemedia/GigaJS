@@ -2,7 +2,7 @@
 
 class giga
 {
-	function giga($gigaroot)
+	function giga($gigaroot = '/')
 	{
 		$this->root = $_SERVER['DOCUMENT_ROOT']; //;
 		$this->gigaroot = $gigaroot; 
@@ -22,47 +22,65 @@ class giga
 		$path_parts = pathinfo($request);
 
 		// echo '*** PATH INFO *** ' .$request . "\n";
+		// echo 'giga: ' . $this->gigaroot, "\n";
 		// echo 'dir ' . $path_parts['dirname'], "\n";
 		// echo 'base ' . $path_parts['basename'], "\n";
 		// echo 'ext ' . $path_parts['extension'], "\n";
 		// echo 'filename ' . $path_parts['filename'], "\n"; // since PHP 5.2.0
 
 				
-				// if (isset($path_parts['extension']))
-				// {	
-				// 	$this->dir = str_replace($this->root, '', $path_parts['dirname']); //$f
-				// }
-				// else {
-					$this->dir = $path_parts['dirname'];
-					if ($this->dir == '/')
-					{
-						//echo 'A: '. $this->dir .'#';
-						$this->dir .= $path_parts['filename'] . '/';
-					}
-					else
-					{
-
-						$this->dir .= '/' . $path_parts['filename'];
-						//echo 'B: '. $this->dir .'#';
-					}	
-					$this->dir = str_replace( $this->gigaroot, '', $this->dir);
-				//}		
-				
-				//dir = dirname($this->root . $request);
+			// if (isset($path_parts['extension']))
+			// {	
+			// 	$this->dir = str_replace($this->root, '', $path_parts['dirname']); //$f
+			// }
+			// else {
+				$this->dir = $path_parts['dirname'];
 
 
-		 			//echo "XXX dir: " . $this->dir . "\n";
+
+				if ($this->dir == '/')
+				{
+					//echo $this->dir  . '  vs  ' . $this->gigaroot;
+
+					// echo 'A*: '. $this->dir .'#' . "\n";
+					$this->dir .= $path_parts['filename'];// . '/';
+					// echo 'B*: ' . $this->dir . "\n";
+				}
+				else
+				{
+					// echo 'C*: '. $this->dir .'#' . "\n";
+					$this->dir .= '/' . $path_parts['filename'];
+					// echo 'D*: ' . $this->dir . "\n";
+					
+				}	
+				$this->dir = str_replace( $this->gigaroot, '', $this->dir);
+			//}		
+			
+			//dir = dirname($this->root . $request);
+
+
+	 			//echo "XXX dir: " . $this->dir . "\n";
 
 
 			//if it's a datafile request
 			if(
 				substr($request, -strlen($this->dataClass)) === $this->dataClass)
 			{
-				$file = dirname($this->root . $this->gigaroot . $this->dir) .'/'. $this->datafile;//Class, '.php') . '.html';
 
-				//echo "XXX file: " . $file . "\n";
+				// echo('request: '. $request . "\n");
+				// echo('pre: ' . $this->dir); 
 
-				new data($file);
+				$this->dir = str_replace($this->dataClass, '', $this->dir); //$f
+
+
+
+				$this->content($_POST['depth']);
+
+				// $file = dirname($this->root . $this->gigaroot . $this->dir) .'/'. $this->datafile;
+
+				// //echo "XXX file: " . $file . "\n";
+
+				// new data($file);
 
 				exit;
 			}
@@ -71,13 +89,15 @@ class giga
 		}
 
 
-		function content ()
+		function content ($requestedDepth = -1)
 		{
+			$depth = 0;
 			$dir_array = explode('/', $this->dir);
+			$len = count($dir_array) - 1;
 
 			$path = '';
 
-			echo '<div class="gigaContent" data-rel="' . $this->gigaroot . '"></div>';
+			echo '<div class="gigaContent" data-rel="' . $this->gigaroot . '" data-dir="' . $this->dir . '"></div>';
 
 			foreach($dir_array as $folder)
 			{
@@ -88,12 +108,30 @@ class giga
 				// echo '<br/>';
 				// echo $request . ' ### ' . $this->root . '/' . $this->gigaroot .  $path  . $this->datafile . "\n";
 
-				new data($this->root . $this->gigaroot .  $path  . $this->datafile);
-				
-				if ($this->dir == '/')
+				$depth++;
+
+				if ($requestedDepth != -1 && $depth > $len)
 				{
+					// echo "Break: " . $depth . ' ' . $len . "\n";
 					break;
 				}
+
+				// echo "folder: " . $folder . "\n";
+				// echo "PATH: " . $this->root . $this->gigaroot .  $path  . $this->datafile  . "\n";
+				// echo "len: " . $len  . "\n";
+				// echo "depth: " . $depth  . "\n";
+				// echo "req depth: " . $requestedDepth  . "\n";
+
+				if ($requestedDepth == -1 || $len - $depth <= $requestedDepth)
+				{
+					new data($this->root . $this->gigaroot .  $path  . $this->datafile);			
+				}
+				// else
+				// {
+				// 	echo "DROP: " . $this->root . $this->gigaroot .  $path  . $this->datafile  . "\n";
+				// }	
+
+				echo "\n";
 			}
 		}
 

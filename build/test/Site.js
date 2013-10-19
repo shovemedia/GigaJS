@@ -2693,6 +2693,7 @@ define('lib/jquery.withSelf',['jquery'],function(){
 		 * @return {History}
 		 */
 		History.setHash = function(hash,queue){
+
 			// Prepare
 			var State, pageUrl;
 
@@ -8535,13 +8536,16 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 				if('/' + loc == siteRoot + '/' + '#' + anchor)
 				{
-					alert('goto anchor: ' + siteRoot + '/' + anchor);
+					//alert('goto anchor: ' + siteRoot + '/' + anchor);
 					this.gotoBranch(siteRoot + '/' + anchor);
+
+					//IE < 10 will "eat" the hash if we got here via redirect!
+					window.document.location.href = window.document.URL;
 				}
 				else
 				{
-					var newLoc = siteRoot + '#' + anchor;
-					alert('A: window.location.href = ' + newLoc);
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + anchor;
+					//	alert('A: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;
 				}	
@@ -8552,14 +8556,14 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 				if (loc == '/')
 				{
-					alert('C: goto branch ' + siteRoot + loc);
+					//alert('C: goto branch ' + siteRoot + loc);
 					this.gotoBranch(siteRoot + loc);
 				}	
 				else
 				{
 					// + '.'
-					var newLoc = siteRoot + '#' + loc;
-					alert('B: window.location.href = ' + newLoc);
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + loc.substring(1);
+					//	alert('B: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;					
 				}
@@ -8746,6 +8750,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			console.log('rootChangeBranch', this.rootChangeBranch);
 
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
+
+			this.preloadController.rootChangeBranch = this.rootChangeBranch;
+
 			if (pageFlow != undefined)
 			{
 				this.siteController.init(pageFlow);
@@ -9738,6 +9745,8 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		this.dataUrl = 'data.php';
 
+		this.rootChangeBranch = null;
+
 		this.init();
 	}
 
@@ -9745,14 +9754,14 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 	p.init = function()
 	{
-		this.primeCache();
+		this.primeCache($('div[data-rel]', this.$context));
 	}
 
-	p.primeCache = function()
+	p.primeCache = function($content)
 	{
 		var self = this;
 
-		$('div[data-rel]', this.$context).each(function(){
+		$content.each(function(){
 			var $item = $(this);
 			var url = $item.data('rel');
 			var $content = $item;//.withSelf('div');
@@ -9786,8 +9795,23 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		var self = this;
 
+		var depth;
+
+		var rootChangeBranchArr = this.rootChangeBranch.split('/');
+		var targetBranchArr = url.split('/');
+
+
+		depth = targetBranchArr.length - rootChangeBranchArr.length;
+
+		//alert (depth + ' :: ' + this.rootChangeBranch + ': ' +  rootChangeBranchArr.length + ' vs ' + url + ': ' + targetBranchArr.length);
+
+
 		$.ajax({
 			url: url + this.dataUrl,
+			type: 'POST',
+			data: {
+				depth: depth
+			},
 			success: function(x)
 			{
 				self.onFetched(url, x, deferred);
@@ -9797,7 +9821,9 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 	p.onFetched = function(url, x, deferred)
 	{
-		this.cache[url] = deferred.promise;
+		//this.cache[url] = deferred.promise;
+
+
 
 		console.log('ok', x);
 
@@ -9822,7 +9848,15 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 //		History.replaceState(null, null, full); //href
 		document.title = title;
 
-		deferred.resolve($(x));
+		var $content = $(x);
+
+		var foo = $content.filter('div[data-rel]');
+
+		console.log ('foo', foo);
+
+		this.primeCache(foo);
+
+		deferred.resolve($content);
 	};
 
 	return PreloadController;
@@ -9859,6 +9893,29 @@ define('ContentRenderer',['require','jquery','lib/jquery.withSelf'],function(req
 		return $x;
 	};
 
+	//cribbed from URI.js
+	p.resolveRelative = function(_path)
+	{
+	    while (true) {
+	        _parent = _path.indexOf('/../');
+	        if (_parent === -1) {
+	            // no more ../ to resolve
+				break;
+			} else if (_parent === 0) {
+				// top level cannot be relative...
+				_path = _path.substring(3);
+				break;
+			}
+
+			_pos = _path.substring(0, _parent).lastIndexOf('/');
+			if (_pos === -1) {
+				_pos = _parent;
+			}
+			_path = _path.substring(0, _pos) + _path.substring(_parent + 3);
+		}
+		return _path;
+	}
+
 	p.initNav = function(context)
 	{
 		var self = this;
@@ -9867,10 +9924,10 @@ define('ContentRenderer',['require','jquery','lib/jquery.withSelf'],function(req
 			var navLink = $(this);
 			// console.log('nav link', navLink)
 
+			var href = self.resolveRelative(navLink.attr('href'));
+
 			navLink.click(function(event){
 				event.preventDefault();
-				
-				var href = navLink.attr('href');
 
 				console.log('= = =');
 				console.log('push: ', href);

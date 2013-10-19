@@ -12,6 +12,8 @@ define(function(require){
 
 		this.dataUrl = 'data.php';
 
+		this.rootChangeBranch = null;
+
 		this.init();
 	}
 
@@ -19,19 +21,19 @@ define(function(require){
 
 	p.init = function()
 	{
-		this.primeCache();
+		this.cacheContent($('div[data-rel]', this.$context));
 	}
 
-	p.primeCache = function()
+	p.cacheContent = function($content)
 	{
 		var self = this;
 
-		$('div[data-rel]', this.$context).each(function(){
+		$content.each(function(){
 			var $item = $(this);
 			var url = $item.data('rel');
 			var $content = $item;//.withSelf('div');
 
-			console.log('prime cache:', url, $content.html())
+			console.log('cache:', url, $content.html())
 
 			var deferred = Q.defer();
 			deferred.resolve($content);
@@ -60,8 +62,23 @@ define(function(require){
 
 		var self = this;
 
+		var depth;
+
+		var rootChangeBranchArr = this.rootChangeBranch.split('/');
+		var targetBranchArr = url.split('/');
+
+
+		depth = targetBranchArr.length - rootChangeBranchArr.length;
+
+		//alert (depth + ' :: ' + this.rootChangeBranch + ': ' +  rootChangeBranchArr.length + ' vs ' + url + ': ' + targetBranchArr.length);
+
+
 		$.ajax({
 			url: url + this.dataUrl,
+			type: 'POST',
+			data: {
+				depth: depth
+			},
 			success: function(x)
 			{
 				self.onFetched(url, x, deferred);
@@ -71,7 +88,7 @@ define(function(require){
 
 	p.onFetched = function(url, x, deferred)
 	{
-		this.cache[url] = deferred.promise;
+		//this.cache[url] = deferred.promise;
 
 		console.log('ok', x);
 
@@ -96,7 +113,11 @@ define(function(require){
 //		History.replaceState(null, null, full); //href
 		document.title = title;
 
-		deferred.resolve($(x));
+		var $content = $(x);
+
+		this.cacheContent($content.filter('div[data-rel]'));
+
+		deferred.resolve($content);
 	};
 
 	return PreloadController;

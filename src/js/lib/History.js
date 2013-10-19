@@ -1946,6 +1946,7 @@
 		 * @return {History}
 		 */
 		History.setHash = function(hash,queue){
+
 			// Prepare
 			var State, pageUrl;
 

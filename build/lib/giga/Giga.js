@@ -2367,6 +2367,7 @@
 		 * @return {History}
 		 */
 		History.setHash = function(hash,queue){
+
 			// Prepare
 			var State, pageUrl;
 
@@ -8209,13 +8210,16 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 				if('/' + loc == siteRoot + '/' + '#' + anchor)
 				{
-					alert('goto anchor: ' + siteRoot + '/' + anchor);
+					//alert('goto anchor: ' + siteRoot + '/' + anchor);
 					this.gotoBranch(siteRoot + '/' + anchor);
+
+					//IE < 10 will "eat" the hash if we got here via redirect!
+					window.document.location.href = window.document.URL;
 				}
 				else
 				{
-					var newLoc = siteRoot + '#' + anchor;
-					alert('A: window.location.href = ' + newLoc);
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + anchor;
+					//	alert('A: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;
 				}	
@@ -8226,14 +8230,14 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 				if (loc == '/')
 				{
-					alert('C: goto branch ' + siteRoot + loc);
+					//alert('C: goto branch ' + siteRoot + loc);
 					this.gotoBranch(siteRoot + loc);
 				}	
 				else
 				{
 					// + '.'
-					var newLoc = siteRoot + '#' + loc;
-					alert('B: window.location.href = ' + newLoc);
+					var newLoc = root.substring(0, root.length-1) + siteRoot + '#' + loc.substring(1);
+					//	alert('B: window.location.href = ' + newLoc);
 					window.location.href = newLoc;
 					return;					
 				}
@@ -8420,6 +8424,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			
 
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
+
+			this.preloadController.rootChangeBranch = this.rootChangeBranch;
+
 			if (pageFlow != undefined)
 			{
 				this.siteController.init(pageFlow);
