@@ -42,6 +42,8 @@
 			document.getElementById("contextView").style.display = "none";
 		</script>
 
+		<div id="title_area"></div>
+
 		<div id="projectDetail">
 		<?php $g->content(); ?>
 		</div>

@@ -1,116 +1,124 @@
 define(function(require){
 
-		var $ = require('jquery'),
-		easing = require('lib/tween/easing/EasePack'),
+	var $ = require('jquery'),
+	easing = require('lib/tween/easing/EasePack'),
 
-		TweenLite = require('lib/tween/TweenLite');
-		//	TimelineLite = require('lib/tween/TimelineLite');
+	TweenLite = require('lib/tween/TweenLite');
+	//	TimelineLite = require('lib/tween/TimelineLite');
 	
 	require('lib/tween/plugins/CSSPlugin');
 	
 
-	var PortfolioTransitions = function(transitionManager){
-		console.log('new PortfolioTransitions');
+	var TestTransitions = function(giga){
+		console.log('new TestTransitions');
+		this.giga = giga;
+	}
+	
+	var p = TestTransitions.prototype;
+
+	p.setTransitionManager = function (transitionManager)
+	{
 		this.transitionManager = transitionManager;
 	}
 
-	var p = PortfolioTransitions.prototype;
-
-	p.fadeIn = function($content, onStart, onComplete)
+	p.fadeIn = function($content)
 	{
-		console.log('fadeIn')
+		console.log('GET fadeIn fn');
 
 		//, border: '1px solid green'
 		$content.css({opacity: 0});
 		
-		TweenLite.to($content, this.transitionManager.duration, {
-			opacity: 1,
-			onStart: onStart,
-			onComplete: onComplete
+		return TweenLite.to($content, this.transitionManager.duration, {
+			opacity: 1
 		});
 	};
 
-	p.fadeOut = function($content, onStart, onComplete)
+	p.fadeOut = function($content)
 	{
-		console.log('fadeOut');
+		console.log('GET fadeOut fn');
 
 		//, border: '1px solid red'
 		$content.css({opacity: 1});
 
-		TweenLite.to($content, this.transitionManager.duration, {
-			opacity: 0,
-			onStart: onStart,
-			onComplete: onComplete
+		return TweenLite.to($content, this.transitionManager.duration, {
+			opacity: 0
 		});
 	};
 
 
 
-	p.listIn = function($content, onStart, onComplete)
+	p.listIn = function($content)
 	{
-		console.log('listIn')
+		console.log('GET listIn fn');
 
 		$content.css({
-			position: 'relative',
-			left: '-100px'
+			position: 'relative'
 		});
 		
-		TweenLite.to($content, this.transitionManager.duration, {
-			left: 0,
-			onStart: onStart,			
-			onComplete: onComplete
+		return TweenLite.fromTo($content, this.transitionManager.duration
+		, {
+			left: -100
+		} , {
+			left: 0
 		});
 	};
 
-	p.listOut = function($content, onStart, onComplete)
+	p.listOut = function($content)
 	{
-		console.log('listOut');
+		console.log('GET listOut fn');
 
 		$content.css({
-			position: 'relative',
-			left: '0px'
+			position: 'relative'			
 		});
 
-		TweenLite.to($content, this.transitionManager.duration, {
-			left: -100,
-			onStart: onStart,		
-			onComplete: onComplete
+		return TweenLite.fromTo($content, this.transitionManager.duration
+		, {
+			left: 0
+		} , {
+			left: -100
 		});
 	};
 
-	p.projectIn = function($content, onStart, onComplete)
+	p.projectIn = function($content)
 	{
-		console.log('projectIn')
+		console.log('GET projectIn fn');
+		//	$content.css('border', '1px solid red');
 
-		if (onStart != undefined)
-		{
-			onStart();
+		//	$content.css({
+		//		position: 'relative'			
+		//	});
+
+		var self = this;
+
+		return function(){
+			console.log('projectIn');
+
+			$content.hide();
+
+			$content.slideDown({
+				duration: self.transitionManager.duration * 1000
+			});
 		};
-
-		$content.hide().slideDown({
-			duration: this.transitionManager.duration * 1000,
-			complete: onComplete
-		});
-
 	};
 
 
-	p.projectOut =  function($content, onStart, onComplete)
+	p.projectOut =  function($content)
 	{
-		console.log('projectOut');
+		console.log('GET projectOut fn');
 
-		if (onStart != undefined)
-		{
-			onStart();
+		var self = this;
+
+		return function(){
+			console.log('projectOut');
+
+			//	$content.hide().show();
+
+			$content.slideUp({
+				duration: self.transitionManager.duration * 1000
+			});
 		};
-
-		$content.slideUp({
-			duration: this.transitionManager.duration * 1000,
-			complete: onComplete
-		});
-
 	};
 
 
-	return PortfolioTransitions;
+	return TestTransitions;
 });

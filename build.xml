@@ -190,10 +190,11 @@
 
         <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit" classpath="${jsdoc-toolkit.dir}/jsdoc-toolkit-ant-task-1.1.2.jar;${jsdoc-toolkit.dir}/java/classes/js.jar" />
 
-        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}" includeundocumented="true">
+        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/test" outputdir="${docs.dir}/demo" includeundocumented="true">
         </jsdoctoolkit>
 
-    
+        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}/giga" includeundocumented="true">
+        </jsdoctoolkit>    
 
 <!--
 

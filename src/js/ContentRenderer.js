@@ -23,6 +23,8 @@ define(function(require){
 
 	p.addContent = function($x)
 	{
+		console.log('addContent', $x);
+
 		this.initNav($x);
 
 		this.$hidden.append($x);
@@ -33,10 +35,10 @@ define(function(require){
 	//cribbed from URI.js
 	p.resolveRelative = function(_path)
 	{
-	    while (true) {
-	        _parent = _path.indexOf('/../');
-	        if (_parent === -1) {
-	            // no more ../ to resolve
+		while (true) {
+			_parent = _path.indexOf('/../');
+			if (_parent === -1) {
+				// no more ../ to resolve
 				break;
 			} else if (_parent === 0) {
 				// top level cannot be relative...

@@ -21,8 +21,52 @@ define(function(require){
 
 	p.init = function()
 	{
-		this.cacheContent($('div[data-rel]', this.$context));
-	}
+		var $original = this.$context;
+		
+		var $content = this.unwrapEnvelope($original);
+
+		this.cacheContent($content);
+
+	};
+
+	p.unwrapEnvelope = function($content)
+	{
+		var $envelopes = $content.withSelf('div[data-rel]'); //$('div[data-rel]', $content);
+
+		var $p;
+
+		var $allContents = $();
+
+		$envelopes.each(function(){
+			var $envelope = $(this);
+
+			var $contents = $envelope.children();
+
+			var rel = $envelope.data('rel');
+			$contents.data('rel', rel);
+			$contents.attr('data-rel', rel);
+
+			$p = $envelope.parent();//.parent();
+			
+			if ($p.length > 0)
+			{	
+				console.log($contents);
+				//alert('A' + $contents.html());
+				$envelope.detach();
+				$p.append($contents);
+			}
+			else
+			{
+				//alert('B');
+				$contents.detach();
+			}	
+		
+			$allContents = $allContents.add($contents);
+		});
+
+
+		return $($allContents);
+	};
 
 	p.cacheContent = function($content)
 	{
@@ -106,16 +150,23 @@ define(function(require){
 		//strip anchor if present
 		href = href.replace('#', '');
 
-				console.log('= = =');
-				console.log('replace: ', href);
-				console.log('= = =');
+		console.log('= = =');
+		console.log('replace: ', href);
+		console.log('= = =');
 
 //		History.replaceState(null, null, full); //href
 		document.title = title;
 
 		var $content = $(x);
 
-		this.cacheContent($content.filter('div[data-rel]'));
+		//	var $original = $('div[data-rel]', this.$context);
+		var $content = this.unwrapEnvelope($content);
+
+		console.log('POST FETCH:', $content);
+
+		//this.$context.append($content);
+
+		this.cacheContent($content); // $content.filter('div[data-rel]')
 
 		deferred.resolve($content);
 	};

@@ -11,11 +11,25 @@
  */
 define(function(require){
 
+/*!
+ * VERSION: 1.11.0
+ * DATE: 2013-10-21
+ * UPDATES AND DOCS AT: http://www.greensock.com
+ *
+ * @license Copyright (c) 2008-2013, GreenSock. All rights reserved.
+ * This work is subject to the terms at http://www.greensock.com/terms_of_use.html or for
+ * Club GreenSock members, the software agreement that was issued with your membership.
+ * 
+ * @author: Jack Doyle, jack@greensock.com
+ */
 (function(window) {
 	
 		"use strict";
-		var _globals = window.GreenSockGlobals || window,
-			_namespace = function(ns) {
+		var _globals = window.GreenSockGlobals || window;
+		if (_globals.TweenLite) {
+			return; //in case the core set of classes is already loaded, don't instantiate twice.
+		}
+		var _namespace = function(ns) {
 				var a = ns.split("."), 
 					p = _globals, i;
 				for (i = 0; i < a.length; i++) {
@@ -24,7 +38,16 @@ define(function(require){
 				return p;
 			},
 			gs = _namespace("com.greensock"),
+			_tinyNum = 0.0000000001,
+			_slice = [].slice,
 			_emptyFunc = function() {},
+			_isArray = (function() { //works around issues in iframe environments where the Array global isn't shared, thus if the object originates in a different window/iframe, "(obj instanceof Array)" will evaluate false. We added some speed optimizations to avoid Object.prototype.toString.call() unless it's absolutely necessary because it's VERY slow (like 20x slower)
+				var toString = Object.prototype.toString,
+					array = toString.call([]);
+				return function(obj) {
+					return (obj instanceof Array || (typeof(obj) === "object" && !!obj.push && toString.call(obj) === array));
+				};
+			}()),
 			a, i, p, _ticker, _tickerActive,
 			_defLookup = {},
 
@@ -254,7 +277,8 @@ define(function(require){
  */
  		var _reqAnimFrame = window.requestAnimationFrame, 
 			_cancelAnimFrame = window.cancelAnimationFrame, 
-			_getTime = Date.now || function() {return new Date().getTime();};
+			_getTime = Date.now || function() {return new Date().getTime();},
+			_lastUpdate = _getTime();
 		
 		//now try to determine the requestAnimationFrame and cancelAnimationFrame functions and if none are found, we'll use a setTimeout()/clearTimeout() polyfill.
 		a = ["ms","moz","webkit","o"];
@@ -270,26 +294,30 @@ define(function(require){
 				_useRAF = (useRAF !== false && _reqAnimFrame),
 				_fps, _req, _id, _gap, _nextTime,
 				_tick = function(manual) {
-					_self.time = (_getTime() - _startTime) / 1000;
-					var id = _id,
-						overlap = _self.time - _nextTime;
+					_lastUpdate = _getTime();
+					_self.time = (_lastUpdate - _startTime) / 1000;
+					var overlap = _self.time - _nextTime,
+						dispatch;
 					if (!_fps || overlap > 0 || manual === true) {
 						_self.frame++;
 						_nextTime += overlap + (overlap >= _gap ? 0.004 : _gap - overlap);
-						_self.dispatchEvent("tick");
+						dispatch = true;
 					}
-					if (manual !== true && id === _id) { //make sure the ids match in case the "tick" dispatch triggered something that caused the ticker to shut down or change _useRAF or something like that.
+					if (manual !== true) { //make sure the request is made before we dispatch the "tick" event so that timing is maintained. Otherwise, if processing the "tick" requires a bunch of time (like 15ms) and we're using a setTimeout() that's based on 16.7ms, it'd technically take 31.7ms between frames otherwise.
 						_id = _req(_tick);
+					}
+					if (dispatch) {
+						_self.dispatchEvent("tick");
 					}
 				};
 
 			EventDispatcher.call(_self);
-			this.time = this.frame = 0;
-			this.tick = function() {
+			_self.time = _self.frame = 0;
+			_self.tick = function() {
 				_tick(true);
 			};
 
-			this.sleep = function() {
+			_self.sleep = function() {
 				if (_id == null) {
 					return;
 				}
@@ -305,18 +333,18 @@ define(function(require){
 				}
 			};
 
-			this.wake = function() {
-				if (_id) {
+			_self.wake = function() {
+				if (_id !== null) {
 					_self.sleep();
 				}
 				_req = (_fps === 0) ? _emptyFunc : (!_useRAF || !_reqAnimFrame) ? function(f) { return setTimeout(f, ((_nextTime - _self.time) * 1000 + 1) | 0); } : _reqAnimFrame;
 				if (_self === _ticker) {
 					_tickerActive = true;
 				}
-				_tick();
+				_tick(2);
 			};
 
-			this.fps = function(value) {
+			_self.fps = function(value) {
 				if (!arguments.length) {
 					return _fps;
 				}
@@ -326,7 +354,7 @@ define(function(require){
 				_self.wake();
 			};
 
-			this.useRAF = function(value) {
+			_self.useRAF = function(value) {
 				if (!arguments.length) {
 					return _useRAF;
 				}
@@ -336,12 +364,12 @@ define(function(require){
 			};
 			_self.fps(fps);
 
-			//a bug in iOS 6 Safari occasionally prevents the requestAnimationFrame from working initially, so we use a 1-second timeout that automatically falls back to setTimeout() if it senses this condition.
+			//a bug in iOS 6 Safari occasionally prevents the requestAnimationFrame from working initially, so we use a 1.5-second timeout that automatically falls back to setTimeout() if it senses this condition.
 			setTimeout(function() {
 				if (_useRAF && (!_id || _self.frame < 5)) {
 					_self.useRAF(false);
 				}
-			}, 1000);
+			}, 1500);
 		});
 		
 		p = gs.Ticker.prototype = new gs.events.EventDispatcher();
@@ -354,18 +382,18 @@ define(function(require){
  * ----------------------------------------------------------------
  */
 		var Animation = _class("core.Animation", function(duration, vars) {
-				this.vars = vars || {};
+				this.vars = vars = vars || {};
 				this._duration = this._totalDuration = duration || 0;
-				this._delay = Number(this.vars.delay) || 0;
+				this._delay = Number(vars.delay) || 0;
 				this._timeScale = 1;
-				this._active = (this.vars.immediateRender === true);
-				this.data = this.vars.data;
-				this._reversed = (this.vars.reversed === true);
+				this._active = (vars.immediateRender === true);
+				this.data = vars.data;
+				this._reversed = (vars.reversed === true);
 				
 				if (!_rootTimeline) {
 					return;
 				}
-				if (!_tickerActive) {
+				if (!_tickerActive) { //some browsers (like iOS 6 Safari) shut down JavaScript execution when the tab is disabled and they [occasionally] neglect to start up requestAnimationFrame again when returning - this code ensures that the engine starts up again properly.
 					_ticker.wake();
 				}
 
@@ -384,6 +412,17 @@ define(function(require){
 		p._rawPrevTime = -1;
 		p._next = p._last = p._onUpdate = p._timeline = p.timeline = null;
 		p._paused = false;
+
+
+		//some browsers (like iOS) occasionally drop the requestAnimationFrame event when the user switches to a different tab and then comes back again, so we use a 2-second setTimeout() to sense if/when that condition occurs and then wake() the ticker.
+		var _checkTimeout = function() {
+				if (_getTime() - _lastUpdate > 2000) {
+					_ticker.wake();
+				}
+				setTimeout(_checkTimeout, 2000);
+			};
+		_checkTimeout();
+
 		
 		p.play = function(from, suppressEvents) {
 			if (arguments.length) {
@@ -421,12 +460,19 @@ define(function(require){
 			return this.reversed(true).paused(false);
 		};
 		
-		p.render = function() {
-			
+		p.render = function(time, suppressEvents, force) {
+			//stub - we override this method in subclasses.
 		};
 		
 		p.invalidate = function() {
 			return this;
+		};
+
+		p.isActive = function() {
+			var tl = this._timeline, //the 2 root timelines won't have a _timeline; they're always active.
+				startTime = this._startTime,
+				rawTime;
+			return (!tl || (!this._gc && !this._paused && tl.isActive() && (rawTime = tl.rawTime()) >= startTime && rawTime < startTime + this.totalDuration() / this._timeScale));
 		};
 		
 		p._enabled = function (enabled, ignoreTimeline) {
@@ -434,7 +480,7 @@ define(function(require){
 				_ticker.wake();
 			}
 			this._gc = !enabled; 
-			this._active = (enabled && !this._paused && this._totalTime > 0 && this._totalTime < this._totalDuration);
+			this._active = this.isActive();
 			if (ignoreTimeline !== true) {
 				if (enabled && !this.timeline) {
 					this._timeline.add(this, this._startTime - this._delay);
@@ -463,15 +509,23 @@ define(function(require){
 			}
 			return this;
 		};
+
+		p._swapSelfInParams = function(params) {
+			var i = params.length,
+				copy = params.concat();
+			while (--i > -1) {
+				if (params[i] === "{self}") {
+					copy[i] = this;
+				}
+			}
+			return copy;
+		};
 	
 //----Animation getters/setters --------------------------------------------------------
 		
 		p.eventCallback = function(type, callback, params, scope) {
-			if (type == null) {
-				return null;
-			} else if (type.substr(0,2) === "on") {
-				var v = this.vars,
-					i;
+			if ((type || "").substr(0,2) === "on") {
+				var v = this.vars;
 				if (arguments.length === 1) {
 					return v[type];
 				}
@@ -479,17 +533,8 @@ define(function(require){
 					delete v[type];
 				} else {
 					v[type] = callback;
-					v[type + "Params"] = params;
+					v[type + "Params"] = (_isArray(params) && params.join("").indexOf("{self}") !== -1) ? this._swapSelfInParams(params) : params;
 					v[type + "Scope"] = scope;
-					if (params) {
-						i = params.length;
-						while (--i > -1) {
-							if (params[i] === "{self}") {
-								params = v[type + "Params"] = params.concat(); //copying the array avoids situations where the same array is passed to multiple tweens/timelines and {self} doesn't correctly point to each individual instance.
-								params[i] = this;
-							}
-						}
-					}
 				}
 				if (type === "onUpdate") {
 					this._onUpdate = callback;
@@ -558,13 +603,15 @@ define(function(require){
 						time = totalDuration;
 					}
 					this._startTime = (this._paused ? this._pauseTime : tl._time) - ((!this._reversed ? time : totalDuration - time) / this._timeScale);
-					if (!tl._dirty) { //for performance improvement. If the parent's cache is already dirty, it already took care of marking the anscestors as dirty too, so skip the function call here.
+					if (!tl._dirty) { //for performance improvement. If the parent's cache is already dirty, it already took care of marking the ancestors as dirty too, so skip the function call here.
 						this._uncache(false);
 					}
-					if (!tl._active) {
-						//in case any of the anscestors had completed but should now be enabled...
+					//in case any of the ancestor timelines had completed but should now be enabled, we should reset their totalTime() which will also ensure that they're lined up properly and enabled. Skip for animations that are on the root (wasteful). Example: a TimelineLite.exportRoot() is performed when there's a paused tween on the root, the export will not complete until that tween is unpaused, but imagine a child gets restarted later, after all [unpaused] tweens have completed. The startTime of that child would get pushed out, but one of the ancestors may have completed.
+					if (tl._timeline) {
 						while (tl._timeline) {
-							tl.totalTime(tl._totalTime, true);
+							if (tl._timeline._time !== (tl._startTime + tl._totalTime) / tl._timeScale) {
+								tl.totalTime(tl._totalTime, true);
+							}
 							tl = tl._timeline;
 						}
 					}
@@ -572,11 +619,15 @@ define(function(require){
 				if (this._gc) {
 					this._enabled(true, false);
 				}
-				if (this._totalTime !== time) {
+				if (this._totalTime !== time || this._duration === 0) {
 					this.render(time, suppressEvents, false);
 				}
 			}
 			return this;
+		};
+
+		p.progress = p.totalProgress = function(value, suppressEvents) {
+			return (!arguments.length) ? this._time / this.duration() : this.totalTime(this.duration() * value, suppressEvents);
 		};
 		
 		p.startTime = function(value) {
@@ -596,7 +647,7 @@ define(function(require){
 			if (!arguments.length) {
 				return this._timeScale;
 			}
-			value = value || 0.000001; //can't allow zero because it'll throw the math off
+			value = value || _tinyNum; //can't allow zero because it'll throw the math off
 			if (this._timeline && this._timeline.smoothChildTiming) {
 				var pauseTime = this._pauseTime,
 					t = (pauseTime || pauseTime === 0) ? pauseTime : this._timeline.totalTime();
@@ -625,17 +676,18 @@ define(function(require){
 				if (!_tickerActive && !value) {
 					_ticker.wake();
 				}
-				var raw = this._timeline.rawTime(),
+				var tl = this._timeline,
+					raw = tl.rawTime(),
 					elapsed = raw - this._pauseTime;
-				if (!value && this._timeline.smoothChildTiming) {
+				if (!value && tl.smoothChildTiming) {
 					this._startTime += elapsed;
 					this._uncache(false);
 				}
 				this._pauseTime = value ? raw : null;
 				this._paused = value;
-				this._active = (!value && this._totalTime > 0 && this._totalTime < this._totalDuration);
-				if (!value && elapsed !== 0 && this._duration !== 0) {
-					this.render(this._totalTime, true, true);
+				this._active = this.isActive();
+				if (!value && elapsed !== 0 && this._initted && this.duration()) {
+					this.render((tl.smoothChildTiming ? this._totalTime : (raw - this._startTime) / this._timeScale), true, true); //in case the target's properties changed via some other tween or manual update by the user, we should force a render.
 				}
 			}
 			if (this._gc && !value) {
@@ -757,21 +809,22 @@ define(function(require){
  */
 		var TweenLite = _class("TweenLite", function(target, duration, vars) {
 				Animation.call(this, duration, vars);
-				
+				this.render = TweenLite.prototype.render; //speed optimization (avoid prototype lookup on this "hot" method)
+
 				if (target == null) {
 					throw "Cannot tween a null target.";
 				}
 
 				this.target = target = (typeof(target) !== "string") ? target : TweenLite.selector(target) || target;
 
-				var isSelector = (target.jquery || (typeof(target.each) === "function" && target[0] && target[0].nodeType && target[0].style)),
+				var isSelector = (target.jquery || (target.length && target !== window && target[0] && (target[0] === window || (target[0].nodeType && target[0].style && !target.nodeType)))),
 					overwrite = this.vars.overwrite,
 					i, targ, targets;
 
 				this._overwrite = overwrite = (overwrite == null) ? _overwriteLookup[TweenLite.defaultOverwrite] : (typeof(overwrite) === "number") ? overwrite >> 0 : _overwriteLookup[overwrite];
 
-				if ((isSelector || target instanceof Array) && typeof(target[0]) !== "number") {
-					this._targets = targets = (isSelector && !target.slice) ? _selectorToArray(target) : target.slice(0);
+				if ((isSelector || target instanceof Array || (target.push && _isArray(target))) && typeof(target[0]) !== "number") {
+					this._targets = targets = _slice.call(target, 0);
 					this._propLookup = [];
 					this._siblings = [];
 					for (i = 0; i < targets.length; i++) {
@@ -785,9 +838,9 @@ define(function(require){
 								targets.splice(i+1, 1); //to avoid an endless loop (can't imagine why the selector would return a string, but just in case)
 							}
 							continue;
-						} else if (typeof(targ.each) === "function" && targ[0] && targ[0].nodeType && targ[0].style) { //in case the user is passing in an array of selector objects (like jQuery objects), we need to check one more level and pull things out if necessary...
+						} else if (targ.length && targ !== window && targ[0] && (targ[0] === window || (targ[0].nodeType && targ[0].style && !targ.nodeType))) { //in case the user is passing in an array of selector objects (like jQuery objects), we need to check one more level and pull things out if necessary. Also note that <select> elements pass all the criteria regarding length and the first child having style, so we must also check to ensure the target isn't an HTML node itself.
 							targets.splice(i--, 1);
-							this._targets = targets = targets.concat(_selectorToArray(targ));
+							this._targets = targets = targets.concat(_slice.call(targ, 0));
 							continue;
 						}
 						this._siblings[i] = _register(targ, this, false);
@@ -795,7 +848,7 @@ define(function(require){
 							_applyOverwrite(targ, this, null, 1, this._siblings[i]);
 						}
 					}
-					
+
 				} else {
 					this._propLookup = {};
 					this._siblings = _register(target, this, false);
@@ -808,20 +861,13 @@ define(function(require){
 				}
 			}, true),
 			_isSelector = function(v) {
-				return (typeof(v.each) === "function" && v[0] && v[0].nodeType && v[0].style);
-			},
-			_selectorToArray = function(v) {
-				var a = [];
-				v.each(function() {
-					a.push(this);
-				});
-				return a;
+				return (v.length && v !== window && v[0] && (v[0] === window || (v[0].nodeType && v[0].style && !v.nodeType))); //we cannot check "nodeType" if the target is window from within an iframe, otherwise it will trigger a security error in some browsers like Firefox.
 			},
 			_autoCSS = function(vars, target) {
 				var css = {},
 					p;
 				for (p in vars) {
-					if (!_reservedProps[p] && (!(p in target) || p === "x" || p === "y" || p === "width" || p === "height" || p === "className") && (!_plugins[p] || (_plugins[p] && _plugins[p]._autoCSS))) { //note: <img> elements contain read-only "x" and "y" properties. We should also prioritize editing css width/height rather than the element's properties.
+					if (!_reservedProps[p] && (!(p in target) || p === "x" || p === "y" || p === "width" || p === "height" || p === "className" || p === "border") && (!_plugins[p] || (_plugins[p] && _plugins[p]._autoCSS))) { //note: <img> elements contain read-only "x" and "y" properties. We should also prioritize editing css width/height rather than the element's properties.
 						css[p] = vars[p];
 						delete vars[p];
 					}
@@ -839,14 +885,14 @@ define(function(require){
 		p._firstPT = p._targets = p._overwrittenProps = p._startAt = null;
 		p._notifyPluginsOfEnabled = false;
 		
-		TweenLite.version = "1.9.6";
+		TweenLite.version = "1.11.0";
 		TweenLite.defaultEase = p._ease = new Ease(null, null, 1, 1);
 		TweenLite.defaultOverwrite = "auto";
 		TweenLite.ticker = _ticker;
 		TweenLite.autoSleep = true;
 		TweenLite.selector = window.$ || window.jQuery || function(e) { if (window.$) { TweenLite.selector = window.$; return window.$(e); } return window.document ? window.document.getElementById((e.charAt(0) === "#") ? e.substr(1) : e) : e; };
 
-		var _internals = TweenLite._internals = {}, //gives us a way to expose certain private values to other GreenSock classes without contaminating tha main TweenLite object.
+		var _internals = TweenLite._internals = {isArray:_isArray, isSelector:_isSelector}, //gives us a way to expose certain private values to other GreenSock classes without contaminating tha main TweenLite object.
 			_plugins = TweenLite._plugins = {},
 			_tweenLookup = TweenLite._tweenLookup = {}, 
 			_tweenLookupNum = 0,
@@ -926,7 +972,7 @@ define(function(require){
 					return changed;
 				}
 				//NOTE: Add 0.0000000001 to overcome floating point errors that can cause the startTime to be VERY slightly off (when a tween's time() is set for example)
-				var startTime = tween._startTime + 0.0000000001, 
+				var startTime = tween._startTime + _tinyNum,
 					overlaps = [], 
 					oCount = 0,
 					zeroDur = (tween._duration === 0),
@@ -940,7 +986,7 @@ define(function(require){
 						if (_checkOverlap(curTween, globalStart, zeroDur) === 0) {
 							overlaps[oCount++] = curTween;
 						}
-					} else if (curTween._startTime <= startTime) if (curTween._startTime + curTween.totalDuration() / curTween._timeScale + 0.0000000001 > startTime) if (!((zeroDur || !curTween._initted) && startTime - curTween._startTime <= 0.0000000002)) {
+					} else if (curTween._startTime <= startTime) if (curTween._startTime + curTween.totalDuration() / curTween._timeScale + _tinyNum > startTime) if (!((zeroDur || !curTween._initted) && startTime - curTween._startTime <= 0.0000000002)) {
 						overlaps[oCount++] = curTween;
 					}
 				}
@@ -973,7 +1019,7 @@ define(function(require){
 					tl = tl._timeline;
 				}
 				t /= ts;
-				return (t > reference) ? t - reference : ((zeroDur && t === reference) || (!tween._initted && t - reference < 0.0000000002)) ? 0.0000000001 : ((t = t + tween.totalDuration() / tween._timeScale / ts) > reference) ? 0 : t - reference - 0.0000000001;
+				return (t > reference) ? t - reference : ((zeroDur && t === reference) || (!tween._initted && t - reference < 2 * _tinyNum)) ? _tinyNum : ((t += tween.totalDuration() / tween._timeScale / ts) > reference + _tinyNum) ? 0 : t - reference - _tinyNum;
 			};
 
 	
@@ -983,24 +1029,29 @@ define(function(require){
 			var v = this.vars,
 				op = this._overwrittenProps,
 				dur = this._duration,
+				immediate = v.immediateRender,
 				ease = v.ease,
 				i, initPlugins, pt, p;
 			if (v.startAt) {
+				if (this._startAt) {
+					this._startAt.render(-1, true); //if we've run a startAt previously (when the tween instantiated), we should revert it so that the values re-instantiate correctly particularly for relative tweens. Without this, a TweenLite.fromTo(obj, 1, {x:"+=100"}, {x:"-=100"}), for example, would actually jump to +=200 because the startAt would run twice, doubling the relative change.
+				}
 				v.startAt.overwrite = 0;
 				v.startAt.immediateRender = true;
 				this._startAt = TweenLite.to(this.target, 0, v.startAt);
-				if (v.immediateRender) {
-					this._startAt = null; //tweens that render immediately (like most from() and fromTo() tweens) shouldn't revert when their parent timeline's playhead goes backward past the startTime because the initial render could have happened anytime and it shouldn't be directly correlated to this tween's startTime. Imagine setting up a complex animation where the beginning states of various objects are rendered immediately but the tween doesn't happen for quite some time - if we revert to the starting values as soon as the playhead goes backward past the tween's startTime, it will throw things off visually. Reversion should only happen in TimelineLite/Max instances where immediateRender was false (which is the default in the convenience methods like from()).
-					if (this._time === 0 && dur !== 0) {
+				if (immediate) {
+					if (this._time > 0) {
+						this._startAt = null; //tweens that render immediately (like most from() and fromTo() tweens) shouldn't revert when their parent timeline's playhead goes backward past the startTime because the initial render could have happened anytime and it shouldn't be directly correlated to this tween's startTime. Imagine setting up a complex animation where the beginning states of various objects are rendered immediately but the tween doesn't happen for quite some time - if we revert to the starting values as soon as the playhead goes backward past the tween's startTime, it will throw things off visually. Reversion should only happen in TimelineLite/Max instances where immediateRender was false (which is the default in the convenience methods like from()).
+					} else if (dur !== 0) {
 						return; //we skip initialization here so that overwriting doesn't occur until the tween actually begins. Otherwise, if you create several immediateRender:true tweens of the same target/properties to drop into a TimelineLite or TimelineMax, the last one created would overwrite the first ones because they didn't get placed into the timeline yet before the first render occurs and kicks in overwriting.
 					}
 				}
-			} else if (v.runBackwards && v.immediateRender && dur !== 0) {
+			} else if (v.runBackwards && dur !== 0) {
 				//from() tweens must be handled uniquely: their beginning values must be rendered but we don't want overwriting to occur yet (when time is still 0). Wait until the tween actually begins before doing all the routines like overwriting. At that time, we should render at the END of the tween to ensure that things initialize correctly (remember, from() tweens go backwards)
 				if (this._startAt) {
 					this._startAt.render(-1, true);
 					this._startAt = null;
-				} else if (this._time === 0) {
+				} else {
 					pt = {};
 					for (p in v) { //copy props into a new object and skip any reserved props, otherwise onComplete or onUpdate or onStart could fire. We should, however, permit autoCSS to go through.
 						if (!_reservedProps[p] || p === "autoCSS") {
@@ -1008,8 +1059,13 @@ define(function(require){
 						}
 					}
 					pt.overwrite = 0;
+					pt.data = "isFromStart"; //we tag the tween with as "isFromStart" so that if [inside a plugin] we need to only do something at the very END of a tween, we have a way of identifying this tween as merely the one that's setting the beginning values for a "from()" tween. For example, clearProps in CSSPlugin should only get applied at the very END of a tween and without this tag, from(...{height:100, clearProps:"height", delay:1}) would wipe the height at the beginning of the tween and after 1 second, it'd kick back in.
 					this._startAt = TweenLite.to(this.target, 0, pt);
-					return;
+					if (!v.immediateRender) {
+						this._startAt.render(-1, true); //for tweens that aren't rendered immediately, we still need to use the _startAt to record the starting values so that we can revert to them if the parent timeline's playhead goes backward beyond the beginning, but we immediately revert the tween back otherwise the parent tween that's currently instantiating wouldn't see the wrong starting values (since they were changed by the _startAt tween)
+					} else if (this._time === 0) {
+						return;
+					}
 				}
 			}
 			if (!ease) {
@@ -1057,19 +1113,14 @@ define(function(require){
 			if (target == null) {
 				return false;
 			}
-			if (!this.vars.css) if (target.style) if (target.nodeType) if (_plugins.css) if (this.vars.autoCSS !== false) { //it's so common to use TweenLite/Max to animate the css of DOM elements, we assume that if the target is a DOM element, that's what is intended (a convenience so that users don't have to wrap things in css:{}, although we still recommend it for a slight performance boost and better specificity)
+			if (!this.vars.css) if (target.style) if (target !== window && target.nodeType) if (_plugins.css) if (this.vars.autoCSS !== false) { //it's so common to use TweenLite/Max to animate the css of DOM elements, we assume that if the target is a DOM element, that's what is intended (a convenience so that users don't have to wrap things in css:{}, although we still recommend it for a slight performance boost and better specificity). Note: we cannot check "nodeType" on the window inside an iframe.
 				_autoCSS(this.vars, target);
 			}
 			for (p in this.vars) {
-				if (_reservedProps[p]) { 
-					if (p === "onStartParams" || p === "onUpdateParams" || p === "onCompleteParams" || p === "onReverseCompleteParams" || p === "onRepeatParams") if ((a = this.vars[p])) {
-						i = a.length;
-						while (--i > -1) {
-							if (a[i] === "{self}") {
-								a = this.vars[p] = a.concat(); //copy the array in case the user referenced the same array in multiple tweens/timelines (each {self} should be unique)
-								a[i] = this;
-							}
-						}
+				v = this.vars[p];
+				if (_reservedProps[p]) {
+					if (v) if ((v instanceof Array) || (v.push && _isArray(v))) if (v.join("").indexOf("{self}") !== -1) {
+						this.vars[p] = v = this._swapSelfInParams(v, this);
 					}
 					
 				} else if (_plugins[p] && (plugin = new _plugins[p]())._onInitTween(target, this.vars[p], this)) {
@@ -1097,7 +1148,6 @@ define(function(require){
 				} else {
 					this._firstPT = propLookup[p] = pt = {_next:this._firstPT, t:target, p:p, f:(typeof(target[p]) === "function"), n:p, pg:false, pr:0};
 					pt.s = (!pt.f) ? parseFloat(target[p]) : target[ ((p.indexOf("set") || typeof(target["get" + p.substr(3)]) !== "function") ? p : "get" + p.substr(3)) ]();
-					v = this.vars[p];
 					pt.c = (typeof(v) === "string" && v.charAt(1) === "=") ? parseInt(v.charAt(0) + "1", 10) * Number(v.substr(2)) : (Number(v) - pt.s) || 0;
 				}
 				if (pt) if (pt._next) {
@@ -1117,41 +1167,40 @@ define(function(require){
 		
 		p.render = function(time, suppressEvents, force) {
 			var prevTime = this._time,
-				isComplete, callback, pt;
-			if (time >= this._duration) {
-				this._totalTime = this._time = this._duration;
+				duration = this._duration,
+				isComplete, callback, pt, rawPrevTime;
+			if (time >= duration) {
+				this._totalTime = this._time = duration;
 				this.ratio = this._ease._calcEnd ? this._ease.getRatio(1) : 1;
 				if (!this._reversed) {
 					isComplete = true;
 					callback = "onComplete";
 				}
-				if (this._duration === 0) { //zero-duration tweens are tricky because we must discern the momentum/direction of time in order to determine whether the starting values should be rendered or the ending values. If the "playhead" of its timeline goes past the zero-duration tween in the forward direction or lands directly on it, the end values should be rendered, but if the timeline's "playhead" moves past it in the backward direction (from a postitive time to a negative time), the starting values must be rendered.
-					if (time === 0 || this._rawPrevTime < 0) if (this._rawPrevTime !== time) {
+				if (duration === 0) { //zero-duration tweens are tricky because we must discern the momentum/direction of time in order to determine whether the starting values should be rendered or the ending values. If the "playhead" of its timeline goes past the zero-duration tween in the forward direction or lands directly on it, the end values should be rendered, but if the timeline's "playhead" moves past it in the backward direction (from a postitive time to a negative time), the starting values must be rendered.
+					rawPrevTime = this._rawPrevTime;
+					if (time === 0 || rawPrevTime < 0 || rawPrevTime === _tinyNum) if (rawPrevTime !== time) {
 						force = true;
-						if (this._rawPrevTime > 0) {
+						if (rawPrevTime > _tinyNum) {
 							callback = "onReverseComplete";
-							if (suppressEvents) {
-								time = -1; //when a callback is placed at the VERY beginning of a timeline and it repeats (or if timeline.seek(0) is called), events are normally suppressed during those behaviors (repeat or seek()) and without adjusting the _rawPrevTime back slightly, the onComplete wouldn't get called on the next render. This only applies to zero-duration tweens/callbacks of course.
-							}
 						}
 					}
-					this._rawPrevTime = time;
+					this._rawPrevTime = rawPrevTime = (!suppressEvents || time) ? time : _tinyNum; //when the playhead arrives at EXACTLY time 0 (right on top) of a zero-duration tween, we need to discern if events are suppressed so that when the playhead moves again (next time), it'll trigger the callback. If events are NOT suppressed, obviously the callback would be triggered in this render. Basically, the callback should fire either when the playhead ARRIVES or LEAVES this exact spot, not both. Imagine doing a timeline.seek(0) and there's a callback that sits at 0. Since events are suppressed on that seek() by default, nothing will fire, but when the playhead moves off of that position, the callback should fire. This behavior is what people intuitively expect. We set the _rawPrevTime to be a precise tiny number to indicate this scenario rather than using another property/variable which would increase memory usage. This technique is less readable, but more efficient.
 				}
 				
 			} else if (time < 0.0000001) { //to work around occasional floating point math artifacts, round super small values to 0.
 				this._totalTime = this._time = 0;
 				this.ratio = this._ease._calcEnd ? this._ease.getRatio(0) : 0;
-				if (prevTime !== 0 || (this._duration === 0 && this._rawPrevTime > 0)) {
+				if (prevTime !== 0 || (duration === 0 && this._rawPrevTime > _tinyNum)) {
 					callback = "onReverseComplete";
 					isComplete = this._reversed;
 				}
 				if (time < 0) {
 					this._active = false;
-					if (this._duration === 0) { //zero-duration tweens are tricky because we must discern the momentum/direction of time in order to determine whether the starting values should be rendered or the ending values. If the "playhead" of its timeline goes past the zero-duration tween in the forward direction or lands directly on it, the end values should be rendered, but if the timeline's "playhead" moves past it in the backward direction (from a postitive time to a negative time), the starting values must be rendered.
+					if (duration === 0) { //zero-duration tweens are tricky because we must discern the momentum/direction of time in order to determine whether the starting values should be rendered or the ending values. If the "playhead" of its timeline goes past the zero-duration tween in the forward direction or lands directly on it, the end values should be rendered, but if the timeline's "playhead" moves past it in the backward direction (from a postitive time to a negative time), the starting values must be rendered.
 						if (this._rawPrevTime >= 0) {
 							force = true;
 						}
-						this._rawPrevTime = time;
+						this._rawPrevTime = rawPrevTime = (!suppressEvents || time) ? time : _tinyNum; //when the playhead arrives at EXACTLY time 0 (right on top) of a zero-duration tween, we need to discern if events are suppressed so that when the playhead moves again (next time), it'll trigger the callback. If events are NOT suppressed, obviously the callback would be triggered in this render. Basically, the callback should fire either when the playhead ARRIVES or LEAVES this exact spot, not both. Imagine doing a timeline.seek(0) and there's a callback that sits at 0. Since events are suppressed on that seek() by default, nothing will fire, but when the playhead moves off of that position, the callback should fire. This behavior is what people intuitively expect. We set the _rawPrevTime to be a precise tiny number to indicate this scenario rather than using another property/variable which would increase memory usage. This technique is less readable, but more efficient.
 					}
 				} else if (!this._initted) { //if we render the very beginning (time == 0) of a fromTo(), we must force the render (normal tweens wouldn't need to render at a time of 0 when the prevTime was also 0). This is also mandatory to make sure overwriting kicks in immediately.
 					force = true;
@@ -1161,7 +1210,7 @@ define(function(require){
 				this._totalTime = this._time = time;
 				
 				if (this._easeType) {
-					var r = time / this._duration, type = this._easeType, pow = this._easePower;
+					var r = time / duration, type = this._easeType, pow = this._easePower;
 					if (type === 1 || (type === 3 && r >= 0.5)) {
 						r = 1 - r;
 					}
@@ -1182,14 +1231,14 @@ define(function(require){
 						this.ratio = 1 - r;
 					} else if (type === 2) {
 						this.ratio = r;
-					} else if (time / this._duration < 0.5) {
+					} else if (time / duration < 0.5) {
 						this.ratio = r / 2;
 					} else {
 						this.ratio = 1 - (r / 2);
 					}
 					
 				} else {
-					this.ratio = this._ease.getRatio(time / this._duration);
+					this.ratio = this._ease.getRatio(time / duration);
 				}
 				
 			}
@@ -1198,18 +1247,18 @@ define(function(require){
 				return;
 			} else if (!this._initted) {
 				this._init();
-				if (!this._initted) { //immediateRender tweens typically won't initialize until the playhead advances (_time is greater than 0) in order to ensure that overwriting occurs properly.
+				if (!this._initted || this._gc) { //immediateRender tweens typically won't initialize until the playhead advances (_time is greater than 0) in order to ensure that overwriting occurs properly. Also, if all of the tweening properties have been overwritten (which would cause _gc to be true, as set in _init()), we shouldn't continue otherwise an onStart callback could be called for example.
 					return;
 				}
 				//_ease is initially set to defaultEase, so now that init() has run, _ease is set properly and we need to recalculate the ratio. Overall this is faster than using conditional logic earlier in the method to avoid having to set ratio twice because we only init() once but renderTime() gets called VERY frequently.
 				if (this._time && !isComplete) {
-					this.ratio = this._ease.getRatio(this._time / this._duration);
+					this.ratio = this._ease.getRatio(this._time / duration);
 				} else if (isComplete && this._ease._calcEnd) {
 					this.ratio = this._ease.getRatio((this._time === 0) ? 0 : 1);
 				}
 			}
 			
-			if (!this._active) if (!this._paused) {
+			if (!this._active) if (!this._paused && this._time !== prevTime && time >= 0) {
 				this._active = true;  //so that if the user renders a tween (as opposed to the timeline rendering it), the timeline is forced to re-render and align it with the proper time/frame on the next rendering cycle. Maybe the tween already finished but the user manually re-renders it as halfway done.
 			}
 			if (prevTime === 0) {
@@ -1220,7 +1269,7 @@ define(function(require){
 						callback = "_dummyGS"; //if no callback is defined, use a dummy value just so that the condition at the end evaluates as true because _startAt should render AFTER the normal render loop when the time is negative. We could handle this in a more intuitive way, of course, but the render loop is the MOST important thing to optimize, so this technique allows us to avoid adding extra conditional logic in a high-frequency area.
 					}
 				}
-				if (this.vars.onStart) if (this._time !== 0 || this._duration === 0) if (!suppressEvents) {
+				if (this.vars.onStart) if (this._time !== 0 || duration === 0) if (!suppressEvents) {
 					this.vars.onStart.apply(this.vars.onStartScope || this, this.vars.onStartParams || _blankArray);
 				}
 			}
@@ -1236,16 +1285,16 @@ define(function(require){
 			}
 			
 			if (this._onUpdate) {
-				if (time < 0) if (this._startAt) {
+				if (time < 0) if (this._startAt && this._startTime) { //if the tween is positioned at the VERY beginning (_startTime 0) of its parent timeline, it's illegal for the playhead to go back further, so we should not render the recorded startAt values.
 					this._startAt.render(time, suppressEvents, force); //note: for performance reasons, we tuck this conditional logic inside less traveled areas (most tweens don't have an onUpdate). We'd just have it at the end before the onComplete, but the values should be updated before any onUpdate is called, so we ALSO put it here and then if it's not called, we do so later near the onComplete.
 				}
-				if (!suppressEvents) {
+				if (!suppressEvents) if (!(force && this._time === 0 && prevTime === 0)) {
 					this._onUpdate.apply(this.vars.onUpdateScope || this, this.vars.onUpdateParams || _blankArray);
 				}
 			}
 			
 			if (callback) if (!this._gc) { //check _gc because there's a chance that kill() could be called in an onUpdate
-				if (time < 0 && this._startAt && !this._onUpdate) {
+				if (time < 0 && this._startAt && !this._onUpdate && this._startTime) { //if the tween is positioned at the VERY beginning (_startTime 0) of its parent timeline, it's illegal for the playhead to go back further, so we should not render the recorded startAt values.
 					this._startAt.render(time, suppressEvents, force);
 				}
 				if (isComplete) {
@@ -1256,6 +1305,9 @@ define(function(require){
 				}
 				if (!suppressEvents && this.vars[callback]) {
 					this.vars[callback].apply(this.vars[callback + "Scope"] || this, this.vars[callback + "Params"] || _blankArray);
+				}
+				if (duration === 0 && this._rawPrevTime !== rawPrevTime) { //the onComplete or onReverseComplete could trigger movement of the playhead and for zero-duration tweens (which must discern direction), we don't want to fire again on the next render. Think of several addPause()'s in a timeline that forces the playhead to a certain spot, but what if it's already paused and another tween is tweening the "time" of the timeline? Each time it moves [forward] past that spot, it would move back, and since suppressEvents is true, it'd reset _rawPrevTime to -1 so that when it begins again, the callback would fire properly (so ultimately it could bounce back and forth during that tween). Again, this is a very uncommon scenario, but possible nonetheless.
+					this._rawPrevTime = 0;
 				}
 			}
 			
@@ -1270,7 +1322,7 @@ define(function(require){
 			}
 			target = (typeof(target) !== "string") ? (target || this._targets || this.target) : TweenLite.selector(target) || target;
 			var i, overwrittenProps, p, pt, propLookup, changed, killProps, record;
-			if ((target instanceof Array || _isSelector(target)) && typeof(target[0]) !== "number") {
+			if ((_isArray(target) || _isSelector(target)) && typeof(target[0]) !== "number") {
 				i = target.length;
 				while (--i > -1) {
 					if (this._kill(vars, target[i])) {
@@ -1297,7 +1349,7 @@ define(function(require){
 
 				if (propLookup) {
 					killProps = vars || propLookup;
-					record = (vars !== overwrittenProps && overwrittenProps !== "all" && vars !== propLookup && (vars == null || vars._tempKill !== true)); //_tempKill is a super-secret way to delete a particular tweening property but NOT have it remembered as an official overwritten property (like in BezierPlugin)
+					record = (vars !== overwrittenProps && overwrittenProps !== "all" && vars !== propLookup && (typeof(vars) !== "object" || !vars._tempKill)); //_tempKill is a super-secret way to delete a particular tweening property but NOT have it remembered as an official overwritten property (like in BezierPlugin)
 					for (p in killProps) {
 						if ((pt = propLookup[p])) {
 							if (pt.pg && pt.t._kill(killProps)) {
@@ -1320,7 +1372,7 @@ define(function(require){
 							overwrittenProps[p] = 1;
 						}
 					}
-					if (!this._firstPT) { //if all tweening properties are killed, kill the tween. Without this line, if there's a tween with multiple targets and then you killTweensOf() each target individually, the tween would technically still remain active and fire its onComplete even though there aren't any more properties tweening.
+					if (!this._firstPT && this._initted) { //if all tweening properties are killed, kill the tween. Without this line, if there's a tween with multiple targets and then you killTweensOf() each target individually, the tween would technically still remain active and fire its onComplete even though there aren't any more properties tweening.
 						this._enabled(false, false);
 					}
 				}
@@ -1390,24 +1442,16 @@ define(function(require){
 		TweenLite.set = function(target, vars) {
 			return new TweenLite(target, 0, vars);
 		};
-		
-		TweenLite.killTweensOf = TweenLite.killDelayedCallsTo = function(target, vars) {
-			var a = TweenLite.getTweensOf(target), 
-				i = a.length;
-			while (--i > -1) {
-				a[i]._kill(vars, target);
-			}
-		};
-		
-		TweenLite.getTweensOf = function(target) {
+
+		TweenLite.getTweensOf = function(target, onlyActive) {
 			if (target == null) { return []; }
 			target = (typeof(target) !== "string") ? target : TweenLite.selector(target) || target;
 			var i, a, j, t;
-			if ((target instanceof Array || _isSelector(target)) && typeof(target[0]) !== "number") {
+			if ((_isArray(target) || _isSelector(target)) && typeof(target[0]) !== "number") {
 				i = target.length;
 				a = [];
 				while (--i > -1) {
-					a = a.concat(TweenLite.getTweensOf(target[i]));
+					a = a.concat(TweenLite.getTweensOf(target[i], onlyActive));
 				}
 				i = a.length;
 				//now get rid of any duplicates (tweens of arrays of objects could cause duplicates)
@@ -1424,12 +1468,24 @@ define(function(require){
 				a = _register(target).concat();
 				i = a.length;
 				while (--i > -1) {
-					if (a[i]._gc) {
+					if (a[i]._gc || (onlyActive && !a[i].isActive())) {
 						a.splice(i, 1);
 					}
 				}
 			}
 			return a;
+		};
+		
+		TweenLite.killTweensOf = TweenLite.killDelayedCallsTo = function(target, onlyActive, vars) {
+			if (typeof(onlyActive) === "object") {
+				vars = onlyActive; //for backwards compatibility (before "onlyActive" parameter was inserted)
+				onlyActive = false;
+			}
+			var a = TweenLite.getTweensOf(target, onlyActive),
+				i = a.length;
+			while (--i > -1) {
+				a[i]._kill(vars, target);
+			}
 		};
 		
 		
@@ -1447,17 +1503,18 @@ define(function(require){
 				}, true);
 		
 		p = TweenPlugin.prototype;
-		TweenPlugin.version = "1.9.1";
+		TweenPlugin.version = "1.10.1";
 		TweenPlugin.API = 2;
 		p._firstPT = null;		
 			
 		p._addTween = function(target, prop, start, end, overwriteProp, round) {
 			var c, pt;
-			if (end != null && (c = (typeof(end) === "number" || end.charAt(1) !== "=") ? Number(end) - start : parseInt(end.charAt(0)+"1", 10) * Number(end.substr(2)))) {
+			if (end != null && (c = (typeof(end) === "number" || end.charAt(1) !== "=") ? Number(end) - start : parseInt(end.charAt(0) + "1", 10) * Number(end.substr(2)))) {
 				this._firstPT = pt = {_next:this._firstPT, t:target, p:prop, s:start, c:c, f:(typeof(target[prop]) === "function"), n:overwriteProp || prop, r:round};
 				if (pt._next) {
 					pt._next._prev = pt;
 				}
+				return pt;
 			}
 		};
 			
@@ -1468,7 +1525,7 @@ define(function(require){
 			while (pt) {
 				val = pt.c * v + pt.s;
 				if (pt.r) {
-					val = (val + ((val > 0) ? 0.5 : -0.5)) >> 0; //about 4x faster than Math.round()
+					val = (val + ((val > 0) ? 0.5 : -0.5)) | 0; //about 4x faster than Math.round()
 				} else if (val < min) if (val > -min) { //prevents issues with converting very small numbers to strings in the browser
 					val = 0;
 				}

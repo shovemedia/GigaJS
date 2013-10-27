@@ -97,7 +97,8 @@ class giga
 
 			$path = '';
 
-			echo '<div class="gigaContent" data-rel="' . $this->gigaroot . '" data-dir="' . $this->dir . '"></div>';
+			//data-dir="' . $this->dir . '"
+			echo '<div class="gigaContent" data-root="' . $this->gigaroot . '"></div>';
 
 			foreach($dir_array as $folder)
 			{

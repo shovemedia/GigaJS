@@ -27,24 +27,23 @@ define(function(require){
 		this.siteController = new SiteController(this.flowController);
 
 		this.transitionController = new TransitionController(this);
+			this.transitionController.setDefaultContentTarget( $('#projectDetail', this.$context) );
 
-		this.siteRoot = $('.gigaContent').data('rel');
+		this.on = {
+			navigate: new signals.Signal()
+		}
+
+
+
+		this.siteRoot = $('.gigaContent').data('root');
 		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
 		this.rootChangeBranch = null;
 
+
+
 		History.Adapter.bind(window, 'statechange', function() {
-
-//	if(window.printStackTrace)
-//	{
-//		console.log(printStackTrace());
-//		//	for (var i=0, len=trace.length; i<len; i++)
-//		//	{
-//		//		console.log(trace[i]);
-//		//	}
-//	}	
-
 			var State = History.getState(); 
 			//History.log(State.data, State.title, State.url);
 
@@ -56,12 +55,7 @@ define(function(require){
 			console.log('base: ' + History.getBaseHref());
 			console.log('getBaseUrl: ' + History.getBaseUrl());
 			console.log('getPageUrl: ' + History.getPageUrl());
-			console.log('getBasePageUrl: ' + History.getBasePageUrl());			
-
-			//History.getShortUrl(State.url)
-
-//	full: http://shovemedia.com/giga/site/project1 
-//	root: http://shovemedia.com/ 
+			console.log('getBasePageUrl: ' + History.getBasePageUrl());
 
 			var full = History.getFullUrl(State.url);
 			var root = History.getRootUrl();
@@ -392,6 +386,8 @@ define(function(require){
 
 		if (this.transitioningBranch != branch)
 		{
+			this.on.navigate.dispatch();
+
 			this.transitioningBranch = branch;
 
 			console.log('navigateTo :: ', ' from ', this.currentBranch, ' to ', this.transitioningBranch);
@@ -410,9 +406,9 @@ define(function(require){
 				}	
 			}
 
-			console.log('rootChangeBranch', this.rootChangeBranch);
-
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
+
+			console.log('rootChangeBranch', this.rootChangeBranch, pageFlow);
 
 			this.preloadController.rootChangeBranch = this.rootChangeBranch;
 
