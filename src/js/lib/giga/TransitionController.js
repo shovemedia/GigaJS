@@ -72,19 +72,38 @@ define(function(require){
 			for (var i=0, len = $sets.length; i<len; i++)
 			{
 				var $set = $sets[i];
-				var transition = self.getTransitionStep(inOutAttribute, i, transitionList, step, $set);
+				var transition = self.getTransitionStep(inOutAttribute, step, $set); //i, transitionList, step, $set
 				transitionList.push(transition);
+			}
+
+			if (inOutAttribute == 'out')
+			{
+				transitionList.reverse();
 			}	
 
 			console.log('transitionList', transitionList);
 
-			return transitionList;
+			var tl = new TimelineLite({paused: true});
+
+			// this is a dummy tween to take up space
+			tl.add(new TweenLite.to({}, .0001, {'dummy': 0}));
+
+			//	tl.eventCallback("onStart", function(){
+			//		console.log("x start " + inOutAttribute);
+			//	});
+			//	tl.eventCallback("onComplete", function(){
+			//		console.log("x end " + inOutAttribute);
+			//	});
+
+			tl.add(transitionList, null, "sequence");
+
+			return tl;
 		}
 	};
 
-	p.getTransitionStep = function(inOutAttribute, i, transitionList, step, $branch)
+	p.getTransitionStep = function(inOutAttribute, step, $branch)
 	{
-		console.log('getTransitionStep', inOutAttribute, i, transitionList, step, $branch);
+		console.log('getTransitionStep', inOutAttribute, step, $branch);
 
 		var self = this;
 
@@ -96,8 +115,8 @@ define(function(require){
 		if (inOutAttribute == 'in')
 		{
 			onStart = function() {
-				console.log('in onStart', i);
-				self.on.transitionIn.dispatch(i);
+				console.log('in onStart');
+				self.on.transitionIn.dispatch();
 				for (var j=0, twLen = $branch.length; j<twLen; j++)
 				{
 					var $item = $($branch[j]);
@@ -116,35 +135,26 @@ define(function(require){
 						$contentTarget = self.$contentTarget;
 					}
 						
-					//	console.log($($item.children().first().data('contenttarget')));
-					//	console.log('default $contentTarget', self.$contentTarget);
 					$contentTarget.append($item);
 				}
 			};
 
-//			onComplete = self.generateCompleteCallback(i+1, transitionList, step);
 			onComplete = function()
 			{
-				console.log('in onComplete', i);
+				console.log('in onComplete');
 				step.release();
-
-				if (transitionList[i+1] != undefined)
-				{
-					transitionList[i+1]();
-				}	
 			}
 		} 
 		else if (inOutAttribute == 'out')
 		{
 			onStart = function() {
-				console.log('out onStart', i);
-				self.on.transitionOut.dispatch(i);
+				console.log('out onStart');
+				self.on.transitionOut.dispatch();
 			};
 
-			//onComplete = self.generateCompleteCallback(i-1, transitionList, step, function(){self.$hidden.append($item);});
 			onComplete = function()
 			{
-				console.log('out onComplete', i);	
+				console.log('out onComplete');	
 				step.release();
 
 				for (var j=0, twLen = $branch.length; j<twLen; j++)
@@ -152,54 +162,39 @@ define(function(require){
 					var $item = $($branch[j]);
 					self.$hidden.prepend($item);
 				}
-
-				if (transitionList[i-1] != undefined)
-				{
-					transitionList[i-1]();
-				}	
 			}
 		}
 
-		return function(){
-			console.log('transition step', i,  $branch.length);
-			var tl = new TimelineLite({paused: true});
+		console.log('transition step',  $branch.length);
+		var tl = new TimelineLite(); //{paused: true}
 
-			tl.eventCallback("onStart", onStart);
-			tl.eventCallback("onComplete", onComplete);
+		tl.eventCallback("onStart", onStart);
+		tl.eventCallback("onComplete", onComplete);
 
-			var tweens = [];
+		var tweens = [];
 
-			// this is a dummy tween to take up space
-			tweens.push(new TweenLite.to({}, self.duration, {'dummy': 0}));
+		// this is a dummy tween to take up space
+		tweens.push(new TweenLite.to({}, self.duration, {'dummy': 0}));
 
-			for (var j=0, twLen = $branch.length; j<twLen; j++)
+		for (var j=0, twLen = $branch.length; j<twLen; j++)
+		{
+			var $item = $($branch[j]);
+
+			var transitionName = $item.data('transition' + inOutAttribute);
+			if (self.transitions[transitionName] == undefined)
 			{
-				var $item = $($branch[j]);
-
-				var transitionName = $item.data('transition' + inOutAttribute);
-				if (self.transitions[transitionName] == undefined)
-				{
-					transitionName = self['default' + inOutAttribute];
-				}
-
-				var tween = self.transitions[transitionName]($item);
-				
-
-				//	if (typeof tween == 'function')
-				//	{
-				//		//j*self.duration
-					tweens.push(tween);
-				//	}
-				//	else
-				//	{
-				//		tweens.push(tween);
-				//	}	
+				transitionName = self['default' + inOutAttribute];
 			}
 
-			tl.add(tweens, null, "start");
+			var tween = self.transitions[transitionName]($item);
+			
+			tweens.push(tween);
+		}
 
-			tl.play();
-		};
+		tl.add(tweens, null, "start");
+
+		return tl;
+
 	};
 
 	p.registerTransitions = function(clazz)

@@ -33,7 +33,7 @@ class data
 	                            "",
 	                            $doc->saveHTML());
 
-		echo '<div data-rel="'. $this->dir .'">';
+		echo '<div class="gigaContent" data-rel="'. $this->dir .'">';
 		echo $content;
 		echo '</div>';
 	}	

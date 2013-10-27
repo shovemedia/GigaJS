@@ -15,7 +15,7 @@ define(function(require){
 
 	p.init = function()
 	{
-		this.$hidden.append($('div[data-rel]', this.$context));
+		this.$hidden.append($('.gigaContent[data-rel]', this.$context));
 		this.initNav(this.$context);
 
 		//this.content = [];

@@ -74,7 +74,7 @@ class giga
 
 
 
-				$this->content($_POST['depth']);
+				$this->contentEmbed($_POST['depth']);
 
 				// $file = dirname($this->root . $this->gigaroot . $this->dir) .'/'. $this->datafile;
 
@@ -88,8 +88,16 @@ class giga
 
 		}
 
+		function content ()
+		{
+			echo '<div class="gigaBase" data-root="' . $this->gigaroot . '">' . "\n";
 
-		function content ($requestedDepth = -1)
+			$this->contentEmbed();
+
+			echo '</div>';
+		}
+
+		function contentEmbed ($requestedDepth = -1)
 		{
 			$depth = 0;
 			$dir_array = explode('/', $this->dir);
@@ -98,7 +106,6 @@ class giga
 			$path = '';
 
 			//data-dir="' . $this->dir . '"
-			echo '<div class="gigaContent" data-root="' . $this->gigaroot . '"></div>';
 
 			foreach($dir_array as $folder)
 			{
@@ -134,6 +141,7 @@ class giga
 
 				echo "\n";
 			}
+
 		}
 
 	} 

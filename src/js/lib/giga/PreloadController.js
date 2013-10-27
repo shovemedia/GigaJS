@@ -31,7 +31,7 @@ define(function(require){
 
 	p.unwrapEnvelope = function($content)
 	{
-		var $envelopes = $content.withSelf('div[data-rel]'); //$('div[data-rel]', $content);
+		var $envelopes = $content.withSelf('.gigaContent[data-rel]'); //$('div[data-rel]', $content);
 
 		var $p;
 
@@ -45,6 +45,7 @@ define(function(require){
 			var rel = $envelope.data('rel');
 			$contents.data('rel', rel);
 			$contents.attr('data-rel', rel);
+			$contents.addClass('gigaContent');
 
 			$p = $envelope.parent();//.parent();
 			
@@ -159,7 +160,6 @@ define(function(require){
 
 		var $content = $(x);
 
-		//	var $original = $('div[data-rel]', this.$context);
 		var $content = this.unwrapEnvelope($content);
 
 		console.log('POST FETCH:', $content);

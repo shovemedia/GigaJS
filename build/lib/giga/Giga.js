@@ -8634,32 +8634,43 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 				}
 				else
 				{
-					
 					$sets[$sets.length-1] = $sets[$sets.length-1].add($branch);
-
-
-					//	
-					//	
 				}	
-
-				
 			});
 
 			for (var i=0, len = $sets.length; i<len; i++)
 			{
 				var $set = $sets[i];
-				
-				var transition = self.getTransitionStep(inOutAttribute, i, transitionList, step, $set);
+				var transition = self.getTransitionStep(inOutAttribute, step, $set); //i, transitionList, step, $set
 				transitionList.push(transition);
+			}
+
+			if (inOutAttribute == 'out')
+			{
+				transitionList.reverse();
 			}	
 
 			
 
-			return transitionList;
+			var tl = new TimelineLite({paused: true});
+
+			// this is a dummy tween to take up space
+			tl.add(new TweenLite.to({}, .0001, {'dummy': 0}));
+
+			//	tl.eventCallback("onStart", function(){
+			//		
+			//	});
+			//	tl.eventCallback("onComplete", function(){
+			//		
+			//	});
+
+			tl.add(transitionList, null, "sequence");
+
+			return tl;
 		}
 	};
 
-	p.getTransitionStep = function(inOutAttribute, i, transitionList, step, $branch)
+	p.getTransitionStep = function(inOutAttribute, step, $branch)
 	{
 		
 
@@ -8674,7 +8685,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 		{
 			onStart = function() {
 				
-				self.on.transitionIn.dispatch(i);
+				self.on.transitionIn.dispatch();
 				for (var j=0, twLen = $branch.length; j<twLen; j++)
 				{
 					var $item = $($branch[j]);
@@ -8693,32 +8704,23 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 						$contentTarget = self.$contentTarget;
 					}
 						
-					//	
-					//	
 					$contentTarget.append($item);
 				}
 			};
 
-//			onComplete = self.generateCompleteCallback(i+1, transitionList, step);
 			onComplete = function()
 			{
 				
 				step.release();
-
-				if (transitionList[i+1] != undefined)
-				{
-					transitionList[i+1]();
-				}	
 			}
 		} 
 		else if (inOutAttribute == 'out')
 		{
 			onStart = function() {
 				
-				self.on.transitionOut.dispatch(i);
+				self.on.transitionOut.dispatch();
 			};
 
-			//onComplete = self.generateCompleteCallback(i-1, transitionList, step, function(){self.$hidden.append($item);});
 			onComplete = function()
 			{
 					
@@ -8729,54 +8731,39 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 					var $item = $($branch[j]);
 					self.$hidden.prepend($item);
 				}
-
-				if (transitionList[i-1] != undefined)
-				{
-					transitionList[i-1]();
-				}	
 			}
 		}
 
-		return function(){
-			
-			var tl = new TimelineLite({paused: true});
+		
+		var tl = new TimelineLite(); //{paused: true}
 
-			tl.eventCallback("onStart", onStart);
-			tl.eventCallback("onComplete", onComplete);
+		tl.eventCallback("onStart", onStart);
+		tl.eventCallback("onComplete", onComplete);
 
-			var tweens = [];
+		var tweens = [];
 
-			// this is a dummy tween to take up space
-			tweens.push(new TweenLite.to({}, self.duration, {'dummy': 0}));
+		// this is a dummy tween to take up space
+		tweens.push(new TweenLite.to({}, self.duration, {'dummy': 0}));
 
-			for (var j=0, twLen = $branch.length; j<twLen; j++)
+		for (var j=0, twLen = $branch.length; j<twLen; j++)
+		{
+			var $item = $($branch[j]);
+
+			var transitionName = $item.data('transition' + inOutAttribute);
+			if (self.transitions[transitionName] == undefined)
 			{
-				var $item = $($branch[j]);
-
-				var transitionName = $item.data('transition' + inOutAttribute);
-				if (self.transitions[transitionName] == undefined)
-				{
-					transitionName = self['default' + inOutAttribute];
-				}
-
-				var tween = self.transitions[transitionName]($item);
-				
-
-				if (typeof tween == 'function')
-				{
-					//j*self.duration
-					tweens.push(tween);
-				}
-				else
-				{
-					tweens.push(tween);
-				}	
+				transitionName = self['default' + inOutAttribute];
 			}
 
-			tl.add(tweens, null, "start");
+			var tween = self.transitions[transitionName]($item);
+			
+			tweens.push(tween);
+		}
 
-			tl.play();
-		};
+		tl.add(tweens, null, "start");
+
+		return tl;
+
 	};
 
 	p.registerTransitions = function(clazz)
@@ -8831,7 +8818,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 
 
-		this.siteRoot = $('.gigaContent').data('root');
+		this.siteRoot = $('.gigaBase').data('root');
 		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
@@ -8872,19 +8859,12 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		this.siteController.on.transitionOut.add(function(step){
 			var $content = self.getOutgoingContent(self.transitioningBranch);
 			var sequence = self.transitionController.getTransitionSequence('out', $content, step);
-			if(sequence.length > 0)
-			{
-				sequence[sequence.length-1]();
-			}
-
+			sequence.play();
 		});
 		this.siteController.on.transitionIn.add(function(step){
 			var $content = self.getIngoingContent(self.transitioningBranch);
 			var sequence = self.transitionController.getTransitionSequence('in', $content, step);
-			if(sequence.length > 0)
-			{
-				sequence[0]();
-			}
+			sequence.play();
 		});
 
 
@@ -8901,28 +8881,33 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			//	self.transitionController.on.transitionIn.add(function(){
 			//	});
 
-			if(sequenceOut.length > 0)
+			var sequenceOutLen = sequenceOut.getChildren(false).length - 1;
+			var sequenceInLen = sequenceIn.getChildren(false).length - 1;
+
+			//alert(sequenceOutLen + ' :: ' + sequenceInLen)
+
+			if(sequenceOutLen > 0)
 			{
-				sequenceOut[sequenceOut.length-1]();
+				sequenceOut.play();
 
-				var inCounterDelay = sequenceOut.length;
+				var inCounterDelay = sequenceOutLen;
 
-				if(sequenceIn.length > 0)
+				if(sequenceInLen > 0)
 				{
 					self.transitionController.on.transitionOut.removeAll();
 					self.transitionController.on.transitionOut.add(function(){
 						if(--inCounterDelay == 0)
 						{
-							sequenceIn[0]();							
+							sequenceIn.play();							
 						}
 					});		
 				}
 			}
 			else
 			{
-				if(sequenceIn.length > 0)
+				if(sequenceInLen > 0)
 				{
-					sequenceIn[0]();
+					sequenceIn.play();
 				}
 			}
 		});
@@ -9083,7 +9068,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 				selector += ', ';
 			}
 
-			selector += 'div[data-rel="' + relContext + '"]';
+			selector += '.gigaContent[data-rel="' + relContext + '"]';
 		}
 		while(the_arr.pop())
 
@@ -9098,10 +9083,8 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 //		
 
 		var selector = this.getSelectorForBranch(branch);
-    
-		//var $outgoing = $('div[data-rel^="' + relContext + '"][data-rel!="' + relContext + '"], div[data-rel]:not([data-rel^="' + relContext + '"])');
 
-		var $outgoing = $('div[data-rel]').not(selector).not(this.$hidden.children());
+		var $outgoing = $('.gigaContent[data-rel]').not(selector).not(this.$hidden.children());
 
 		//
 

@@ -35,7 +35,7 @@ define(function(require){
 
 
 
-		this.siteRoot = $('.gigaContent').data('root');
+		this.siteRoot = $('.gigaBase').data('root');
 		this.currentBranch = this.normalizeBranch(this.siteRoot);
 		this.targetBranch = null;
 		this.transitioningBranch = null;
@@ -76,19 +76,12 @@ define(function(require){
 		this.siteController.on.transitionOut.add(function(step){
 			var $content = self.getOutgoingContent(self.transitioningBranch);
 			var sequence = self.transitionController.getTransitionSequence('out', $content, step);
-			if(sequence.length > 0)
-			{
-				sequence[sequence.length-1]();
-			}
-
+			sequence.play();
 		});
 		this.siteController.on.transitionIn.add(function(step){
 			var $content = self.getIngoingContent(self.transitioningBranch);
 			var sequence = self.transitionController.getTransitionSequence('in', $content, step);
-			if(sequence.length > 0)
-			{
-				sequence[0]();
-			}
+			sequence.play();
 		});
 
 
@@ -105,28 +98,33 @@ define(function(require){
 			//	self.transitionController.on.transitionIn.add(function(){
 			//	});
 
-			if(sequenceOut.length > 0)
+			var sequenceOutLen = sequenceOut.getChildren(false).length - 1;
+			var sequenceInLen = sequenceIn.getChildren(false).length - 1;
+
+			//alert(sequenceOutLen + ' :: ' + sequenceInLen)
+
+			if(sequenceOutLen > 0)
 			{
-				sequenceOut[sequenceOut.length-1]();
+				sequenceOut.play();
 
-				var inCounterDelay = sequenceOut.length;
+				var inCounterDelay = sequenceOutLen;
 
-				if(sequenceIn.length > 0)
+				if(sequenceInLen > 0)
 				{
 					self.transitionController.on.transitionOut.removeAll();
 					self.transitionController.on.transitionOut.add(function(){
 						if(--inCounterDelay == 0)
 						{
-							sequenceIn[0]();							
+							sequenceIn.play();							
 						}
 					});		
 				}
 			}
 			else
 			{
-				if(sequenceIn.length > 0)
+				if(sequenceInLen > 0)
 				{
-					sequenceIn[0]();
+					sequenceIn.play();
 				}
 			}
 		});
@@ -287,7 +285,7 @@ define(function(require){
 				selector += ', ';
 			}
 
-			selector += 'div[data-rel="' + relContext + '"]';
+			selector += '.gigaContent[data-rel="' + relContext + '"]';
 		}
 		while(the_arr.pop())
 
@@ -302,10 +300,8 @@ define(function(require){
 //		console.log('relContext pre', relContext);
 
 		var selector = this.getSelectorForBranch(branch);
-    
-		//var $outgoing = $('div[data-rel^="' + relContext + '"][data-rel!="' + relContext + '"], div[data-rel]:not([data-rel^="' + relContext + '"])');
 
-		var $outgoing = $('div[data-rel]').not(selector).not(this.$hidden.children());
+		var $outgoing = $('.gigaContent[data-rel]').not(selector).not(this.$hidden.children());
 
 		//console.log('getOutgoingContent', 'for', branch, 'is !', selector, $outgoing);
 
