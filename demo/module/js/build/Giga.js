@@ -1,330 +1,4 @@
 
-/**
- * almond 0.1.1 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/almond for details
- */
-//Going sloppy to avoid 'use strict' string cost, but strict practices should
-//be followed.
-/*jslint sloppy: true */
-/*global setTimeout: false */
-
-var requirejs, require, define;
-(function (undef) {
-    var defined = {},
-        waiting = {},
-        config = {},
-        defining = {},
-        aps = [].slice,
-        main, req;
-
-    /**
-     * Given a relative module name, like ./something, normalize it to
-     * a real name that can be mapped to a path.
-     * @param {String} name the relative name
-     * @param {String} baseName a real name that the name arg is relative
-     * to.
-     * @returns {String} normalized name
-     */
-    function normalize(name, baseName) {
-        var baseParts = baseName && baseName.split("/"),
-            map = config.map,
-            starMap = (map && map['*']) || {},
-            nameParts, nameSegment, mapValue, foundMap, i, j, part;
-
-        //Adjust any relative paths.
-        if (name && name.charAt(0) === ".") {
-            //If have a base name, try to normalize against it,
-            //otherwise, assume it is a top-level require that will
-            //be relative to baseUrl in the end.
-            if (baseName) {
-                //Convert baseName to array, and lop off the last part,
-                //so that . matches that "directory" and not name of the baseName's
-                //module. For instance, baseName of "one/two/three", maps to
-                //"one/two/three.js", but we want the directory, "one/two" for
-                //this normalization.
-                baseParts = baseParts.slice(0, baseParts.length - 1);
-
-                name = baseParts.concat(name.split("/"));
-
-                //start trimDots
-                for (i = 0; (part = name[i]); i++) {
-                    if (part === ".") {
-                        name.splice(i, 1);
-                        i -= 1;
-                    } else if (part === "..") {
-                        if (i === 1 && (name[2] === '..' || name[0] === '..')) {
-                            //End of the line. Keep at least one non-dot
-                            //path segment at the front so it can be mapped
-                            //correctly to disk. Otherwise, there is likely
-                            //no path mapping for a path starting with '..'.
-                            //This can still fail, but catches the most reasonable
-                            //uses of ..
-                            return true;
-                        } else if (i > 0) {
-                            name.splice(i - 1, 2);
-                            i -= 2;
-                        }
-                    }
-                }
-                //end trimDots
-
-                name = name.join("/");
-            }
-        }
-
-        //Apply map config if available.
-        if ((baseParts || starMap) && map) {
-            nameParts = name.split('/');
-
-            for (i = nameParts.length; i > 0; i -= 1) {
-                nameSegment = nameParts.slice(0, i).join("/");
-
-                if (baseParts) {
-                    //Find the longest baseName segment match in the config.
-                    //So, do joins on the biggest to smallest lengths of baseParts.
-                    for (j = baseParts.length; j > 0; j -= 1) {
-                        mapValue = map[baseParts.slice(0, j).join('/')];
-
-                        //baseName segment has  config, find if it has one for
-                        //this name.
-                        if (mapValue) {
-                            mapValue = mapValue[nameSegment];
-                            if (mapValue) {
-                                //Match, update name to the new value.
-                                foundMap = mapValue;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                foundMap = foundMap || starMap[nameSegment];
-
-                if (foundMap) {
-                    nameParts.splice(0, i, foundMap);
-                    name = nameParts.join('/');
-                    break;
-                }
-            }
-        }
-
-        return name;
-    }
-
-    function makeRequire(relName, forceSync) {
-        return function () {
-            //A version of a require function that passes a moduleName
-            //value for items that may need to
-            //look up paths relative to the moduleName
-            return req.apply(undef, aps.call(arguments, 0).concat([relName, forceSync]));
-        };
-    }
-
-    function makeNormalize(relName) {
-        return function (name) {
-            return normalize(name, relName);
-        };
-    }
-
-    function makeLoad(depName) {
-        return function (value) {
-            defined[depName] = value;
-        };
-    }
-
-    function callDep(name) {
-        if (waiting.hasOwnProperty(name)) {
-            var args = waiting[name];
-            delete waiting[name];
-            defining[name] = true;
-            main.apply(undef, args);
-        }
-
-        if (!defined.hasOwnProperty(name)) {
-            throw new Error('No ' + name);
-        }
-        return defined[name];
-    }
-
-    /**
-     * Makes a name map, normalizing the name, and using a plugin
-     * for normalization if necessary. Grabs a ref to plugin
-     * too, as an optimization.
-     */
-    function makeMap(name, relName) {
-        var prefix, plugin,
-            index = name.indexOf('!');
-
-        if (index !== -1) {
-            prefix = normalize(name.slice(0, index), relName);
-            name = name.slice(index + 1);
-            plugin = callDep(prefix);
-
-            //Normalize according
-            if (plugin && plugin.normalize) {
-                name = plugin.normalize(name, makeNormalize(relName));
-            } else {
-                name = normalize(name, relName);
-            }
-        } else {
-            name = normalize(name, relName);
-        }
-
-        //Using ridiculous property names for space reasons
-        return {
-            f: prefix ? prefix + '!' + name : name, //fullName
-            n: name,
-            p: plugin
-        };
-    }
-
-    function makeConfig(name) {
-        return function () {
-            return (config && config.config && config.config[name]) || {};
-        };
-    }
-
-    main = function (name, deps, callback, relName) {
-        var args = [],
-            usingExports,
-            cjsModule, depName, ret, map, i;
-
-        //Use name if no relName
-        relName = relName || name;
-
-        //Call the callback to define the module, if necessary.
-        if (typeof callback === 'function') {
-
-            //Pull out the defined dependencies and pass the ordered
-            //values to the callback.
-            //Default to [require, exports, module] if no deps
-            deps = !deps.length && callback.length ? ['require', 'exports', 'module'] : deps;
-            for (i = 0; i < deps.length; i++) {
-                map = makeMap(deps[i], relName);
-                depName = map.f;
-
-                //Fast path CommonJS standard dependencies.
-                if (depName === "require") {
-                    args[i] = makeRequire(name);
-                } else if (depName === "exports") {
-                    //CommonJS module spec 1.1
-                    args[i] = defined[name] = {};
-                    usingExports = true;
-                } else if (depName === "module") {
-                    //CommonJS module spec 1.1
-                    cjsModule = args[i] = {
-                        id: name,
-                        uri: '',
-                        exports: defined[name],
-                        config: makeConfig(name)
-                    };
-                } else if (defined.hasOwnProperty(depName) || waiting.hasOwnProperty(depName)) {
-                    args[i] = callDep(depName);
-                } else if (map.p) {
-                    map.p.load(map.n, makeRequire(relName, true), makeLoad(depName), {});
-                    args[i] = defined[depName];
-                } else if (!defining[depName]) {
-                    throw new Error(name + ' missing ' + depName);
-                }
-            }
-
-            ret = callback.apply(defined[name], args);
-
-            if (name) {
-                //If setting exports via "module" is in play,
-                //favor that over return value and exports. After that,
-                //favor a non-undefined return value over exports use.
-                if (cjsModule && cjsModule.exports !== undef &&
-                    cjsModule.exports !== defined[name]) {
-                    defined[name] = cjsModule.exports;
-                } else if (ret !== undef || !usingExports) {
-                    //Use the return value from the function.
-                    defined[name] = ret;
-                }
-            }
-        } else if (name) {
-            //May just be an object definition for the module. Only
-            //worry about defining if have a module name.
-            defined[name] = callback;
-        }
-    };
-
-    requirejs = require = req = function (deps, callback, relName, forceSync) {
-        if (typeof deps === "string") {
-            //Just return the module wanted. In this scenario, the
-            //deps arg is the module name, and second arg (if passed)
-            //is just the relName.
-            //Normalize module name, if it contains . or ..
-            return callDep(makeMap(deps, callback).f);
-        } else if (!deps.splice) {
-            //deps is a config object, not an array.
-            config = deps;
-            if (callback.splice) {
-                //callback is an array, which means it is a dependency list.
-                //Adjust args if there are dependencies
-                deps = callback;
-                callback = relName;
-                relName = null;
-            } else {
-                deps = undef;
-            }
-        }
-
-        //Support require(['a'])
-        callback = callback || function () {};
-
-        //Simulate async callback;
-        if (forceSync) {
-            main(undef, deps, callback, relName);
-        } else {
-            setTimeout(function () {
-                main(undef, deps, callback, relName);
-            }, 15);
-        }
-
-        return req;
-    };
-
-    /**
-     * Just drops the config on the floor, but returns req in case
-     * the config return value is used.
-     */
-    req.config = function (cfg) {
-        config = cfg;
-        return req;
-    };
-
-    define = function (name, deps, callback) {
-
-        //This module may not have dependencies
-        if (!deps.splice) {
-            //deps is not an array, so probably means
-            //an object literal or factory function for
-            //the value. Adjust args.
-            callback = deps;
-            deps = [];
-        }
-
-        waiting[name] = [name, deps, callback];
-    };
-
-    define.amd = {
-        jQuery: true
-    };
-}());
-
-define("lib/almond", function(){});
-
-define('lib/jquery.withSelf',['jquery'],function(){
-	var $ = require('jquery');
-
-	$.fn.withSelf = function (selector)
-	{
-				//self 					//descendents
-		return this.filter(selector).add(selector, this) 
-	}
-});
 /*jslint onevar:true, undef:true, newcap:true, regexp:true, bitwise:true, maxerr:50, indent:4, white:false, nomen:false, plusplus:false */
 /*global define:false, require:false, exports:false, module:false*/
 
@@ -2044,7 +1718,7 @@ define('lib/jquery.withSelf',['jquery'],function(){
 				// The actual url these short urls are relative to can change
 				// So within the same session, we the url may end up somewhere different
 
-				console.log ('History.getShortUrl IE ::  ' + 'shortUrl: ' + shortUrl  + '  baseUrl ' + baseUrl );
+				
 
 				shortUrl = shortUrl.replace(baseUrl,'');
 			}
@@ -2052,7 +1726,7 @@ define('lib/jquery.withSelf',['jquery'],function(){
 			// Trim rootUrl
 			shortUrl = shortUrl.replace(rootUrl,'/');
 
-			console.log('short url pre: ', shortUrl);
+			
 
 			// Ensure we can still detect it as a state
 			if ( History.isTraditionalAnchor(shortUrl) ) {		
@@ -2063,7 +1737,7 @@ define('lib/jquery.withSelf',['jquery'],function(){
 			// Clean It
 			shortUrl = shortUrl.replace(/^(\.\/)+/g,'./').replace(/\#$/,'');
 
-			console.log('short url post: ', shortUrl);
+			
 
 			// Return
 			return shortUrl;
@@ -3590,8 +3264,8 @@ define('lib/giga/StateMachine',['require','lib/signals'],function(require){
 		try{
 			return this.transitionsFor[this.state][event];
 		} catch(exception) {
-			console.log('event', event);
-				console.log('transitions', this.transitionsFor, this.state);
+			
+				
 			throw new Error("Invalid Event");
 		}
 	};
@@ -3666,7 +3340,7 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 
 	p.holdAction = function()
 	{
-		console.log('holdAction');
+		
 		this.holds++;
 	}
 
@@ -3676,7 +3350,7 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 	}
 	p.releaseAction = function()
 	{
-		console.log('releaseAction');
+		
 		this.holds--;
 		this.check();
 	};
@@ -3695,15 +3369,15 @@ define('lib/giga/Step',['require','lib/signals'],function(require){
 
 	p.check = function()
 	{
-		console.log('step check', this.name);
+		
 		if (!this.waiting())
 		{
-			console.log('step next!', this.name);
+			
 			this.next();
 		}
     else
     {
-      console.log('holds', this.holds, this.name)
+      
     }
 	};
 
@@ -3898,28 +3572,28 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 		var self = this;
 
 		this.stateMachine.on.transitionOut.add(function(){
-			console.log('SiteController transition out', self);
+			
 			self.currentStep = self.transitionOutStep;
 			self.on.transitionOut.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.preload.add(function(){
-			console.log('SiteController preload');
+			
 			self.currentStep = self.preloadStep;
 			self.on.preload.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.transitionIn.add(function(){
-			console.log('SiteController transition in');
+			
 			self.currentStep = self.transitionInStep;
 			self.on.transitionIn.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.complete.add(function(){
-			console.log('SiteController complete');
+			
 			self.currentStep = null;
 			self.stateMachine.trigger('reset');
 			self.on.complete.dispatch();
@@ -3931,21 +3605,21 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 		var self = this;
 
 		this.stateMachine.on.preload.add(function(){
-			console.log('SiteController preload');
+			
 			self.currentStep = self.preloadStep;
 			self.on.preload.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.transition.add(function(){
-			console.log('SiteController transition');
+			
 			self.currentStep = self.transitionInStep;
 			self.on.transitionCross.dispatch(self.currentStep);
 			self.currentStep.check();
 		});
 
 		this.stateMachine.on.complete.add(function(){
-			console.log('SiteController complete');
+			
 			self.currentStep = null;
 			self.stateMachine.trigger('reset');
 			self.on.complete.dispatch();
@@ -3968,7 +3642,7 @@ define('lib/giga/SiteController',['require','lib/giga/StateMachine','lib/giga/St
 
 	p.nextStep = function()
 	{
-		console.log ('SiteController state', this.stateMachine.state);
+		
 		this.stateMachine.trigger('continue');
 	};
 
@@ -5682,7 +5356,7 @@ define('lib/tween/TweenLite',['require'],function(require){
 			}
 			for (p in _defLookup) {
 				if (!_defLookup[p].func) {
-					window.console.log("GSAP encountered missing dependency: com.greensock." + p);
+					
 				}
 			}
 		}
@@ -6769,7 +6443,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 			},
 			_log = function(s) {//for logging messages, but in a way that won't throw errors in old versions of IE.
 				if (window.console) {
-					console.log(s);
+					
 				}
 			},
 			_prefixCSS = "", //the non-camelCase vendor prefix like "-o-", "-moz-", "-ms-", or "-webkit-"
@@ -7595,7 +7269,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 				}
 			},
 
-			//creates a placeholder special prop for a plugin so that the property gets caught the first time a tween of it is attempted, and at that time it makes the plugin register itself, thus taking over for all future tweens of that property. This allows us to not mandate that things load in a particular order and it also allows us to log() an error that informs the user when they attempt to tween an external plugin-related property without loading its .js file.
+			//creates a placeholder special prop for a plugin so that the property gets caught the first time a tween of it is attempted, and at that time it makes the plugin register itself, thus taking over for all future tweens of that property. This allows us to not mandate that things load in a particular order and it also allows us to  an error that informs the user when they attempt to tween an external plugin-related property without loading its .js file.
 			_registerPluginProp = function(p) {
 				if (!_specialProps[p]) {
 					var pluginName = p.charAt(0).toUpperCase() + p.substr(1) + "Plugin";
@@ -7684,7 +7358,7 @@ define('lib/tween/plugins/CSSPlugin',['require','lib/tween/TweenLite'],function(
 		 *      var start = target.style.width;
 		 *      return function(ratio) {
 		 *              target.style.width = (start + value * ratio) + "px";
-		 *              console.log("set width to " + target.style.width);
+		 *              
 		 *          }
 		 * }, 0);
 		 *
@@ -8929,14 +8603,14 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.setDefaultContentTarget = function(x)
 	{
-		console.log('setDefaultContentTarget', x);
+		
 		this.$contentTarget = x;
 	}
 
 
 	p.getTransitionSequence = function(inOutAttribute, $content, step)
 	{
-		console.log ('transition sequence', inOutAttribute, $content, step);
+		
 
 		if ($content != undefined)
 		{
@@ -8976,7 +8650,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 				transitionList.reverse();
 			}	
 
-			console.log('transitionList', transitionList);
+			
 
 			var tl = new TimelineLite({paused: true});
 
@@ -8984,10 +8658,10 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			tl.add(new TweenLite.to({}, .0001, {'dummy': 0}));
 
 			//	tl.eventCallback("onStart", function(){
-			//		console.log("x start " + inOutAttribute);
+			//		
 			//	});
 			//	tl.eventCallback("onComplete", function(){
-			//		console.log("x end " + inOutAttribute);
+			//		
 			//	});
 
 			tl.add(transitionList, null, "sequence");
@@ -8998,7 +8672,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.getTransitionStep = function(inOutAttribute, step, $branch)
 	{
-		console.log('getTransitionStep', inOutAttribute, step, $branch);
+		
 
 		var self = this;
 
@@ -9010,7 +8684,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 		if (inOutAttribute == 'in')
 		{
 			onStart = function() {
-				console.log('in onStart');
+				
 				self.on.transitionIn.dispatch();
 				for (var j=0, twLen = $branch.length; j<twLen; j++)
 				{
@@ -9021,12 +8695,12 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 					if (targetSelector != undefined && targetSelector != "")
 					{
-						console.log('provided $contentTarget', targetSelector);
+						
 						$contentTarget = $(targetSelector);
 					}
 					else
 					{
-						console.log('default $contentTarget', self.$contentTarget);
+						
 						$contentTarget = self.$contentTarget;
 					}
 						
@@ -9036,20 +8710,20 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 			onComplete = function()
 			{
-				console.log('in onComplete');
+				
 				step.release();
 			}
 		} 
 		else if (inOutAttribute == 'out')
 		{
 			onStart = function() {
-				console.log('out onStart');
+				
 				self.on.transitionOut.dispatch();
 			};
 
 			onComplete = function()
 			{
-				console.log('out onComplete');	
+					
 				step.release();
 
 				for (var j=0, twLen = $branch.length; j<twLen; j++)
@@ -9060,7 +8734,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			}
 		}
 
-		console.log('transition step',  $branch.length);
+		
 		var tl = new TimelineLite(); //{paused: true}
 
 		tl.eventCallback("onStart", onStart);
@@ -9097,7 +8771,7 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 		this.transitions = new clazz(this.giga);
 		this.transitions.setTransitionManager(this);
 		
-		console.log(this.transitions);
+		
 
 		//	for (var i in obj)
 		//	{
@@ -9156,15 +8830,15 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			var State = History.getState(); 
 			//History.log(State.data, State.title, State.url);
 
-			console.log('statechange');
-			console.log(State.url);
-			console.log('short: ' + History.getShortUrl(State.url));
-			console.log('full: ' + History.getFullUrl(State.url));
-			console.log('root: ' + History.getRootUrl());
-			console.log('base: ' + History.getBaseHref());
-			console.log('getBaseUrl: ' + History.getBaseUrl());
-			console.log('getPageUrl: ' + History.getPageUrl());
-			console.log('getBasePageUrl: ' + History.getBasePageUrl());
+			
+			
+			
+			
+			
+			
+			
+			
+			
 
 			var full = History.getFullUrl(State.url);
 			var root = History.getRootUrl();
@@ -9196,7 +8870,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 		this.siteController.on.transitionCross.add(function(step){
 
-			console.log('transitionCross');
+			
 
 			var $contentOut = self.getOutgoingContent(self.transitioningBranch);
 			var $contentIn = self.getIngoingContent(self.transitioningBranch);
@@ -9240,17 +8914,17 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	
 
 		this.siteController.on.preload.add(function(step){
-			//console.log('preload step hold!');
+			//
 			step.hold();
 
 			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
 
-			//	console.log ('preload: ', url)
+			//	
 
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
 			promise.then(function(x){
-				//console.log('preload step release!');
+				//
 
 				if (x.parent().length == 0)
 				{
@@ -9266,21 +8940,21 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			self.navigateTo(self.targetBranch); //
 		});
 
-		console.log('INIT: ', History.getLocationHref() );
-			console.log('short: ' + History.getShortUrl(History.getLocationHref()));
-			console.log('full: ' + History.getFullUrl(History.getLocationHref()));
-			console.log('root: ' + History.getRootUrl());
-			console.log('base: ' + History.getBaseHref());
-			console.log('getBaseUrl: ' + History.getBaseUrl());
-			console.log('getPageUrl: ' + History.getPageUrl());
-			console.log('getBasePageUrl: ' + History.getBasePageUrl());		
+		
+			
+			
+			
+			
+			
+			
+					
 
 			var full = History.getFullUrl(History.getLocationHref());
 			var root = History.getRootUrl();
 
 		var anchor = History.getHash(); // window.location.hash.substring(1);
 
-		console.log('anchor: ', anchor);
+		
 
 		var loc = full.replace(root, ''); //root
 		var siteRoot = this.siteRoot; 	
@@ -9294,7 +8968,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			if (anchor.length > 0)
 			{
-				console.log ("TEST: " + '/' + loc +  '  vs  ' +   siteRoot + '/' + '#' + anchor);
+				
 
 //    /giga/site/#/project2/pic1/  vs  /giga/site/ 
 
@@ -9370,7 +9044,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	p.getSelectorForBranch = function(branch)
 	{
-		console.log('getSelectorForBranch ' , branch);
+		
 
 		var selector = '';
 
@@ -9380,11 +9054,11 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	    do
 	    {	
-			console.log('****')
-			console.log(branch)
-			console.log(the_arr);
-			console.log(the_arr.join('/'))
-			console.log('****');
+			
+			
+			
+			
+			
 
 		    //	the_arr.pop();
 			var relContext = this.normalizeBranch( the_arr.join('/'));
@@ -9398,7 +9072,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		}
 		while(the_arr.pop())
 
-		console.log('selector', selector);
+		
 
 		return selector;
 	}
@@ -9406,13 +9080,13 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	p.getOutgoingContent = function(branch)
 	{
 		//	var relContext = $x.data('rel');
-//		console.log('relContext pre', relContext);
+//		
 
 		var selector = this.getSelectorForBranch(branch);
 
 		var $outgoing = $('.gigaContent[data-rel]').not(selector).not(this.$hidden.children());
 
-		//console.log('getOutgoingContent', 'for', branch, 'is !', selector, $outgoing);
+		//
 
 		return $outgoing
 	};
@@ -9421,15 +9095,15 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	{
 		var selector = this.getSelectorForBranch(branch);
 
-		console.log('selector', selector)
+		
 
 		var $ingoing = $(selector, this.$hidden);
-		//console.log('getIngoingContent', 'is', selector, $ingoing);
+		//
 
-		//console.log('HIDDEN: ', this.$hidden.html());
+		//
 
 		//	$ingoing.each(function(i){
-		//		console.log(i, $(this).html())
+		//		
 		//	});
 
 		//	alert('holdup')
@@ -9440,20 +9114,20 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 	p.setPreloadController = function(clazz)
 	{
-		//	console.log ('preload controller', x);
+		//	
 		this.preloadController = new clazz(this.$context)
 	};
 
 	p.setContentRenderer = function(clazz)
 	{
-		//	console.log ('content renderer', x);
+		//	
 		this.contentRenderer = new clazz(this.$context, this.$hidden);
 		this.contentRenderer.init();
 	};
 
 	p.registerTransitions = function(x)
 	{
-		//	console.log ('xition controller', x);
+		//	
 		this.transitionController.registerTransitions(x);
 	};
 
@@ -9468,7 +9142,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		
 		if (this.targetBranch != branch)
 		{
-			console.log('Giga goto', 'branch', branch, 'targetBranch', this.targetBranch);
+			
 			//console.trace();
 
 			this.targetBranch = branch;
@@ -9484,9 +9158,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	{
 		//	if (History.emulated.pushState)
 		//	{
-		//		console.log('pre ', branch);
+		//		
 		//		branch = this.siteRoot + branch;
-		//		console.log('post ', branch);
+		//		
 		//	}
 
 		if (this.transitioningBranch != branch)
@@ -9495,7 +9169,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			this.transitioningBranch = branch;
 
-			console.log('navigateTo :: ', ' from ', this.currentBranch, ' to ', this.transitioningBranch);
+			
 
 			var currentBranchArray = this.currentBranch.split('/');
 			var transitioningBranchArray = this.transitioningBranch.split('/');
@@ -9513,7 +9187,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			var pageFlow = this.flowController.getBranchFlow(this.rootChangeBranch);
 
-			console.log('rootChangeBranch', this.rootChangeBranch, pageFlow);
+			
 
 			this.preloadController.rootChangeBranch = this.rootChangeBranch;
 
@@ -9567,1457 +9241,4 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 
 	return Giga;
-});
-/** @license MIT License (c) copyright 2011-2013 original author or authors */
-
-/**
- * A lightweight CommonJS Promises/A and when() implementation
- * when is part of the cujo.js family of libraries (http://cujojs.com/)
- *
- * Licensed under the MIT License at:
- * http://www.opensource.org/licenses/mit-license.php
- *
- * @author Brian Cavalier
- * @author John Hann
- * @version 2.5.1
- */
-(function(define, global) { 
-define('q',['require'],function (require) {
-
-	// Public API
-
-	when.promise   = promise;    // Create a pending promise
-	when.resolve   = resolve;    // Create a resolved promise
-	when.reject    = reject;     // Create a rejected promise
-	when.defer     = defer;      // Create a {promise, resolver} pair
-
-	when.join      = join;       // Join 2 or more promises
-
-	when.all       = all;        // Resolve a list of promises
-	when.map       = map;        // Array.map() for promises
-	when.reduce    = reduce;     // Array.reduce() for promises
-	when.settle    = settle;     // Settle a list of promises
-
-	when.any       = any;        // One-winner race
-	when.some      = some;       // Multi-winner race
-
-	when.isPromise = isPromiseLike;  // DEPRECATED: use isPromiseLike
-	when.isPromiseLike = isPromiseLike; // Is something promise-like, aka thenable
-
-	/**
-	 * Register an observer for a promise or immediate value.
-	 *
-	 * @param {*} promiseOrValue
-	 * @param {function?} [onFulfilled] callback to be called when promiseOrValue is
-	 *   successfully fulfilled.  If promiseOrValue is an immediate value, callback
-	 *   will be invoked immediately.
-	 * @param {function?} [onRejected] callback to be called when promiseOrValue is
-	 *   rejected.
-	 * @param {function?} [onProgress] callback to be called when progress updates
-	 *   are issued for promiseOrValue.
-	 * @returns {Promise} a new {@link Promise} that will complete with the return
-	 *   value of callback or errback or the completion value of promiseOrValue if
-	 *   callback and/or errback is not supplied.
-	 */
-	function when(promiseOrValue, onFulfilled, onRejected, onProgress) {
-		// Get a trusted promise for the input promiseOrValue, and then
-		// register promise handlers
-		return cast(promiseOrValue).then(onFulfilled, onRejected, onProgress);
-	}
-
-	function cast(x) {
-		return x instanceof Promise ? x : resolve(x);
-	}
-
-	/**
-	 * Trusted Promise constructor.  A Promise created from this constructor is
-	 * a trusted when.js promise.  Any other duck-typed promise is considered
-	 * untrusted.
-	 * @constructor
-	 * @param {function} sendMessage function to deliver messages to the promise's handler
-	 * @param {function?} inspect function that reports the promise's state
-	 * @name Promise
-	 */
-	function Promise(sendMessage, inspect) {
-		this._message = sendMessage;
-		this.inspect = inspect;
-	}
-
-	Promise.prototype = {
-		/**
-		 * Register handlers for this promise.
-		 * @param [onFulfilled] {Function} fulfillment handler
-		 * @param [onRejected] {Function} rejection handler
-		 * @param [onProgress] {Function} progress handler
-		 * @return {Promise} new Promise
-		 */
-		then: function(onFulfilled, onRejected, onProgress) {
-			/*jshint unused:false*/
-			var args, sendMessage;
-
-			args = arguments;
-			sendMessage = this._message;
-
-			return _promise(function(resolve, reject, notify) {
-				sendMessage('when', args, resolve, notify);
-			}, this._status && this._status.observed());
-		},
-
-		/**
-		 * Register a rejection handler.  Shortcut for .then(undefined, onRejected)
-		 * @param {function?} onRejected
-		 * @return {Promise}
-		 */
-		otherwise: function(onRejected) {
-			return this.then(undef, onRejected);
-		},
-
-		/**
-		 * Ensures that onFulfilledOrRejected will be called regardless of whether
-		 * this promise is fulfilled or rejected.  onFulfilledOrRejected WILL NOT
-		 * receive the promises' value or reason.  Any returned value will be disregarded.
-		 * onFulfilledOrRejected may throw or return a rejected promise to signal
-		 * an additional error.
-		 * @param {function} onFulfilledOrRejected handler to be called regardless of
-		 *  fulfillment or rejection
-		 * @returns {Promise}
-		 */
-		ensure: function(onFulfilledOrRejected) {
-			return typeof onFulfilledOrRejected === 'function'
-				? this.then(injectHandler, injectHandler)['yield'](this)
-				: this;
-
-			function injectHandler() {
-				return resolve(onFulfilledOrRejected());
-			}
-		},
-
-		/**
-		 * Shortcut for .then(function() { return value; })
-		 * @param  {*} value
-		 * @return {Promise} a promise that:
-		 *  - is fulfilled if value is not a promise, or
-		 *  - if value is a promise, will fulfill with its value, or reject
-		 *    with its reason.
-		 */
-		'yield': function(value) {
-			return this.then(function() {
-				return value;
-			});
-		},
-
-		/**
-		 * Runs a side effect when this promise fulfills, without changing the
-		 * fulfillment value.
-		 * @param {function} onFulfilledSideEffect
-		 * @returns {Promise}
-		 */
-		tap: function(onFulfilledSideEffect) {
-			return this.then(onFulfilledSideEffect)['yield'](this);
-		},
-
-		/**
-		 * Assumes that this promise will fulfill with an array, and arranges
-		 * for the onFulfilled to be called with the array as its argument list
-		 * i.e. onFulfilled.apply(undefined, array).
-		 * @param {function} onFulfilled function to receive spread arguments
-		 * @return {Promise}
-		 */
-		spread: function(onFulfilled) {
-			return this.then(function(array) {
-				// array may contain promises, so resolve its contents.
-				return all(array, function(array) {
-					return onFulfilled.apply(undef, array);
-				});
-			});
-		},
-
-		/**
-		 * Shortcut for .then(onFulfilledOrRejected, onFulfilledOrRejected)
-		 * @deprecated
-		 */
-		always: function(onFulfilledOrRejected, onProgress) {
-			return this.then(onFulfilledOrRejected, onFulfilledOrRejected, onProgress);
-		}
-	};
-
-	/**
-	 * Returns a resolved promise. The returned promise will be
-	 *  - fulfilled with promiseOrValue if it is a value, or
-	 *  - if promiseOrValue is a promise
-	 *    - fulfilled with promiseOrValue's value after it is fulfilled
-	 *    - rejected with promiseOrValue's reason after it is rejected
-	 * @param  {*} value
-	 * @return {Promise}
-	 */
-	function resolve(value) {
-		return promise(function(resolve) {
-			resolve(value);
-		});
-	}
-
-	/**
-	 * Returns a rejected promise for the supplied promiseOrValue.  The returned
-	 * promise will be rejected with:
-	 * - promiseOrValue, if it is a value, or
-	 * - if promiseOrValue is a promise
-	 *   - promiseOrValue's value after it is fulfilled
-	 *   - promiseOrValue's reason after it is rejected
-	 * @param {*} promiseOrValue the rejected value of the returned {@link Promise}
-	 * @return {Promise} rejected {@link Promise}
-	 */
-	function reject(promiseOrValue) {
-		return when(promiseOrValue, rejected);
-	}
-
-	/**
-	 * Creates a {promise, resolver} pair, either or both of which
-	 * may be given out safely to consumers.
-	 * The resolver has resolve, reject, and progress.  The promise
-	 * has then plus extended promise API.
-	 *
-	 * @return {{
-	 * promise: Promise,
-	 * resolve: function:Promise,
-	 * reject: function:Promise,
-	 * notify: function:Promise
-	 * resolver: {
-	 *	resolve: function:Promise,
-	 *	reject: function:Promise,
-	 *	notify: function:Promise
-	 * }}}
-	 */
-	function defer() {
-		var deferred, pending, resolved;
-
-		// Optimize object shape
-		deferred = {
-			promise: undef, resolve: undef, reject: undef, notify: undef,
-			resolver: { resolve: undef, reject: undef, notify: undef }
-		};
-
-		deferred.promise = pending = promise(makeDeferred);
-
-		return deferred;
-
-		function makeDeferred(resolvePending, rejectPending, notifyPending) {
-			deferred.resolve = deferred.resolver.resolve = function(value) {
-				if(resolved) {
-					return resolve(value);
-				}
-				resolved = true;
-				resolvePending(value);
-				return pending;
-			};
-
-			deferred.reject  = deferred.resolver.reject  = function(reason) {
-				if(resolved) {
-					return resolve(rejected(reason));
-				}
-				resolved = true;
-				rejectPending(reason);
-				return pending;
-			};
-
-			deferred.notify  = deferred.resolver.notify  = function(update) {
-				notifyPending(update);
-				return update;
-			};
-		}
-	}
-
-	/**
-	 * Creates a new promise whose fate is determined by resolver.
-	 * @param {function} resolver function(resolve, reject, notify)
-	 * @returns {Promise} promise whose fate is determine by resolver
-	 */
-	function promise(resolver) {
-		return _promise(resolver, monitorApi.PromiseStatus && monitorApi.PromiseStatus());
-	}
-
-	/**
-	 * Creates a new promise, linked to parent, whose fate is determined
-	 * by resolver.
-	 * @param {function} resolver function(resolve, reject, notify)
-	 * @param {Promise?} status promise from which the new promise is begotten
-	 * @returns {Promise} promise whose fate is determine by resolver
-	 * @private
-	 */
-	function _promise(resolver, status) {
-		var self, value, consumers = [];
-
-		self = new Promise(_message, inspect);
-		self._status = status;
-
-		// Call the provider resolver to seal the promise's fate
-		try {
-			resolver(promiseResolve, promiseReject, promiseNotify);
-		} catch(e) {
-			promiseReject(e);
-		}
-
-		// Return the promise
-		return self;
-
-		/**
-		 * Private message delivery. Queues and delivers messages to
-		 * the promise's ultimate fulfillment value or rejection reason.
-		 * @private
-		 * @param {String} type
-		 * @param {Array} args
-		 * @param {Function} resolve
-		 * @param {Function} notify
-		 */
-		function _message(type, args, resolve, notify) {
-			consumers ? consumers.push(deliver) : enqueue(function() { deliver(value); });
-
-			function deliver(p) {
-				p._message(type, args, resolve, notify);
-			}
-		}
-
-		/**
-		 * Returns a snapshot of the promise's state at the instant inspect()
-		 * is called. The returned object is not live and will not update as
-		 * the promise's state changes.
-		 * @returns {{ state:String, value?:*, reason?:* }} status snapshot
-		 *  of the promise.
-		 */
-		function inspect() {
-			return value ? value.inspect() : toPendingState();
-		}
-
-		/**
-		 * Transition from pre-resolution state to post-resolution state, notifying
-		 * all listeners of the ultimate fulfillment or rejection
-		 * @param {*|Promise} val resolution value
-		 */
-		function promiseResolve(val) {
-			if(!consumers) {
-				return;
-			}
-
-			var queue = consumers;
-			consumers = undef;
-
-			enqueue(function () {
-				value = coerce(self, val);
-				if(status) {
-					updateStatus(value, status);
-				}
-				runHandlers(queue, value);
-			});
-
-		}
-
-		/**
-		 * Reject this promise with the supplied reason, which will be used verbatim.
-		 * @param {*} reason reason for the rejection
-		 */
-		function promiseReject(reason) {
-			promiseResolve(rejected(reason));
-		}
-
-		/**
-		 * Issue a progress event, notifying all progress listeners
-		 * @param {*} update progress event payload to pass to all listeners
-		 */
-		function promiseNotify(update) {
-			if(consumers) {
-				var queue = consumers;
-				enqueue(function () {
-					runHandlers(queue, progressed(update));
-				});
-			}
-		}
-	}
-
-	/**
-	 * Run a queue of functions as quickly as possible, passing
-	 * value to each.
-	 */
-	function runHandlers(queue, value) {
-		for (var i = 0; i < queue.length; i++) {
-			queue[i](value);
-		}
-	}
-
-	/**
-	 * Creates a fulfilled, local promise as a proxy for a value
-	 * NOTE: must never be exposed
-	 * @param {*} value fulfillment value
-	 * @returns {Promise}
-	 */
-	function fulfilled(value) {
-		return near(
-			new NearFulfilledProxy(value),
-			function() { return toFulfilledState(value); }
-		);
-	}
-
-	/**
-	 * Creates a rejected, local promise with the supplied reason
-	 * NOTE: must never be exposed
-	 * @param {*} reason rejection reason
-	 * @returns {Promise}
-	 */
-	function rejected(reason) {
-		return near(
-			new NearRejectedProxy(reason),
-			function() { return toRejectedState(reason); }
-		);
-	}
-
-	/**
-	 * Creates a near promise using the provided proxy
-	 * NOTE: must never be exposed
-	 * @param {object} proxy proxy for the promise's ultimate value or reason
-	 * @param {function} inspect function that returns a snapshot of the
-	 *  returned near promise's state
-	 * @returns {Promise}
-	 */
-	function near(proxy, inspect) {
-		return new Promise(function (type, args, resolve) {
-			try {
-				resolve(proxy[type].apply(proxy, args));
-			} catch(e) {
-				resolve(rejected(e));
-			}
-		}, inspect);
-	}
-
-	/**
-	 * Create a progress promise with the supplied update.
-	 * @private
-	 * @param {*} update
-	 * @return {Promise} progress promise
-	 */
-	function progressed(update) {
-		return new Promise(function (type, args, _, notify) {
-			var onProgress = args[2];
-			try {
-				notify(typeof onProgress === 'function' ? onProgress(update) : update);
-			} catch(e) {
-				notify(e);
-			}
-		});
-	}
-
-	/**
-	 * Coerces x to a trusted Promise
-	 * @param {*} x thing to coerce
-	 * @returns {*} Guaranteed to return a trusted Promise.  If x
-	 *   is trusted, returns x, otherwise, returns a new, trusted, already-resolved
-	 *   Promise whose resolution value is:
-	 *   * the resolution value of x if it's a foreign promise, or
-	 *   * x if it's a value
-	 */
-	function coerce(self, x) {
-		if (x === self) {
-			return rejected(new TypeError());
-		}
-
-		if (x instanceof Promise) {
-			return x;
-		}
-
-		try {
-			var untrustedThen = x === Object(x) && x.then;
-
-			return typeof untrustedThen === 'function'
-				? assimilate(untrustedThen, x)
-				: fulfilled(x);
-		} catch(e) {
-			return rejected(e);
-		}
-	}
-
-	/**
-	 * Safely assimilates a foreign thenable by wrapping it in a trusted promise
-	 * @param {function} untrustedThen x's then() method
-	 * @param {object|function} x thenable
-	 * @returns {Promise}
-	 */
-	function assimilate(untrustedThen, x) {
-		return promise(function (resolve, reject) {
-			fcall(untrustedThen, x, resolve, reject);
-		});
-	}
-
-	/**
-	 * Proxy for a near, fulfilled value
-	 * @param {*} value
-	 * @constructor
-	 */
-	function NearFulfilledProxy(value) {
-		this.value = value;
-	}
-
-	NearFulfilledProxy.prototype.when = function(onResult) {
-		return typeof onResult === 'function' ? onResult(this.value) : this.value;
-	};
-
-	/**
-	 * Proxy for a near rejection
-	 * @param {*} reason
-	 * @constructor
-	 */
-	function NearRejectedProxy(reason) {
-		this.reason = reason;
-	}
-
-	NearRejectedProxy.prototype.when = function(_, onError) {
-		if(typeof onError === 'function') {
-			return onError(this.reason);
-		} else {
-			throw this.reason;
-		}
-	};
-
-	function updateStatus(value, status) {
-		value.then(statusFulfilled, statusRejected);
-
-		function statusFulfilled() { status.fulfilled(); }
-		function statusRejected(r) { status.rejected(r); }
-	}
-
-	/**
-	 * Determines if x is promise-like, i.e. a thenable object
-	 * NOTE: Will return true for *any thenable object*, and isn't truly
-	 * safe, since it may attempt to access the `then` property of x (i.e.
-	 *  clever/malicious getters may do weird things)
-	 * @param {*} x anything
-	 * @returns {boolean} true if x is promise-like
-	 */
-	function isPromiseLike(x) {
-		return x && typeof x.then === 'function';
-	}
-
-	/**
-	 * Initiates a competitive race, returning a promise that will resolve when
-	 * howMany of the supplied promisesOrValues have resolved, or will reject when
-	 * it becomes impossible for howMany to resolve, for example, when
-	 * (promisesOrValues.length - howMany) + 1 input promises reject.
-	 *
-	 * @param {Array} promisesOrValues array of anything, may contain a mix
-	 *      of promises and values
-	 * @param howMany {number} number of promisesOrValues to resolve
-	 * @param {function?} [onFulfilled] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onRejected] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onProgress] DEPRECATED, use returnedPromise.then()
-	 * @returns {Promise} promise that will resolve to an array of howMany values that
-	 *  resolved first, or will reject with an array of
-	 *  (promisesOrValues.length - howMany) + 1 rejection reasons.
-	 */
-	function some(promisesOrValues, howMany, onFulfilled, onRejected, onProgress) {
-
-		return when(promisesOrValues, function(promisesOrValues) {
-
-			return promise(resolveSome).then(onFulfilled, onRejected, onProgress);
-
-			function resolveSome(resolve, reject, notify) {
-				var toResolve, toReject, values, reasons, fulfillOne, rejectOne, len, i;
-
-				len = promisesOrValues.length >>> 0;
-
-				toResolve = Math.max(0, Math.min(howMany, len));
-				values = [];
-
-				toReject = (len - toResolve) + 1;
-				reasons = [];
-
-				// No items in the input, resolve immediately
-				if (!toResolve) {
-					resolve(values);
-
-				} else {
-					rejectOne = function(reason) {
-						reasons.push(reason);
-						if(!--toReject) {
-							fulfillOne = rejectOne = identity;
-							reject(reasons);
-						}
-					};
-
-					fulfillOne = function(val) {
-						// This orders the values based on promise resolution order
-						values.push(val);
-						if (!--toResolve) {
-							fulfillOne = rejectOne = identity;
-							resolve(values);
-						}
-					};
-
-					for(i = 0; i < len; ++i) {
-						if(i in promisesOrValues) {
-							when(promisesOrValues[i], fulfiller, rejecter, notify);
-						}
-					}
-				}
-
-				function rejecter(reason) {
-					rejectOne(reason);
-				}
-
-				function fulfiller(val) {
-					fulfillOne(val);
-				}
-			}
-		});
-	}
-
-	/**
-	 * Initiates a competitive race, returning a promise that will resolve when
-	 * any one of the supplied promisesOrValues has resolved or will reject when
-	 * *all* promisesOrValues have rejected.
-	 *
-	 * @param {Array|Promise} promisesOrValues array of anything, may contain a mix
-	 *      of {@link Promise}s and values
-	 * @param {function?} [onFulfilled] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onRejected] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onProgress] DEPRECATED, use returnedPromise.then()
-	 * @returns {Promise} promise that will resolve to the value that resolved first, or
-	 * will reject with an array of all rejected inputs.
-	 */
-	function any(promisesOrValues, onFulfilled, onRejected, onProgress) {
-
-		function unwrapSingleResult(val) {
-			return onFulfilled ? onFulfilled(val[0]) : val[0];
-		}
-
-		return some(promisesOrValues, 1, unwrapSingleResult, onRejected, onProgress);
-	}
-
-	/**
-	 * Return a promise that will resolve only once all the supplied promisesOrValues
-	 * have resolved. The resolution value of the returned promise will be an array
-	 * containing the resolution values of each of the promisesOrValues.
-	 * @memberOf when
-	 *
-	 * @param {Array|Promise} promisesOrValues array of anything, may contain a mix
-	 *      of {@link Promise}s and values
-	 * @param {function?} [onFulfilled] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onRejected] DEPRECATED, use returnedPromise.then()
-	 * @param {function?} [onProgress] DEPRECATED, use returnedPromise.then()
-	 * @returns {Promise}
-	 */
-	function all(promisesOrValues, onFulfilled, onRejected, onProgress) {
-		return _map(promisesOrValues, identity).then(onFulfilled, onRejected, onProgress);
-	}
-
-	/**
-	 * Joins multiple promises into a single returned promise.
-	 * @return {Promise} a promise that will fulfill when *all* the input promises
-	 * have fulfilled, or will reject when *any one* of the input promises rejects.
-	 */
-	function join(/* ...promises */) {
-		return _map(arguments, identity);
-	}
-
-	/**
-	 * Settles all input promises such that they are guaranteed not to
-	 * be pending once the returned promise fulfills. The returned promise
-	 * will always fulfill, except in the case where `array` is a promise
-	 * that rejects.
-	 * @param {Array|Promise} array or promise for array of promises to settle
-	 * @returns {Promise} promise that always fulfills with an array of
-	 *  outcome snapshots for each input promise.
-	 */
-	function settle(array) {
-		return _map(array, toFulfilledState, toRejectedState);
-	}
-
-	/**
-	 * Promise-aware array map function, similar to `Array.prototype.map()`,
-	 * but input array may contain promises or values.
-	 * @param {Array|Promise} array array of anything, may contain promises and values
-	 * @param {function} mapFunc map function which may return a promise or value
-	 * @returns {Promise} promise that will fulfill with an array of mapped values
-	 *  or reject if any input promise rejects.
-	 */
-	function map(array, mapFunc) {
-		return _map(array, mapFunc);
-	}
-
-	/**
-	 * Internal map that allows a fallback to handle rejections
-	 * @param {Array|Promise} array array of anything, may contain promises and values
-	 * @param {function} mapFunc map function which may return a promise or value
-	 * @param {function?} fallback function to handle rejected promises
-	 * @returns {Promise} promise that will fulfill with an array of mapped values
-	 *  or reject if any input promise rejects.
-	 */
-	function _map(array, mapFunc, fallback) {
-		return when(array, function(array) {
-
-			return _promise(resolveMap);
-
-			function resolveMap(resolve, reject, notify) {
-				var results, len, toResolve, i;
-
-				// Since we know the resulting length, we can preallocate the results
-				// array to avoid array expansions.
-				toResolve = len = array.length >>> 0;
-				results = [];
-
-				if(!toResolve) {
-					resolve(results);
-					return;
-				}
-
-				// Since mapFunc may be async, get all invocations of it into flight
-				for(i = 0; i < len; i++) {
-					if(i in array) {
-						resolveOne(array[i], i);
-					} else {
-						--toResolve;
-					}
-				}
-
-				function resolveOne(item, i) {
-					when(item, mapFunc, fallback).then(function(mapped) {
-						results[i] = mapped;
-
-						if(!--toResolve) {
-							resolve(results);
-						}
-					}, reject, notify);
-				}
-			}
-		});
-	}
-
-	/**
-	 * Traditional reduce function, similar to `Array.prototype.reduce()`, but
-	 * input may contain promises and/or values, and reduceFunc
-	 * may return either a value or a promise, *and* initialValue may
-	 * be a promise for the starting value.
-	 *
-	 * @param {Array|Promise} promise array or promise for an array of anything,
-	 *      may contain a mix of promises and values.
-	 * @param {function} reduceFunc reduce function reduce(currentValue, nextValue, index, total),
-	 *      where total is the total number of items being reduced, and will be the same
-	 *      in each call to reduceFunc.
-	 * @returns {Promise} that will resolve to the final reduced value
-	 */
-	function reduce(promise, reduceFunc /*, initialValue */) {
-		var args = fcall(slice, arguments, 1);
-
-		return when(promise, function(array) {
-			var total;
-
-			total = array.length;
-
-			// Wrap the supplied reduceFunc with one that handles promises and then
-			// delegates to the supplied.
-			args[0] = function (current, val, i) {
-				return when(current, function (c) {
-					return when(val, function (value) {
-						return reduceFunc(c, value, i, total);
-					});
-				});
-			};
-
-			return reduceArray.apply(array, args);
-		});
-	}
-
-	// Snapshot states
-
-	/**
-	 * Creates a fulfilled state snapshot
-	 * @private
-	 * @param {*} x any value
-	 * @returns {{state:'fulfilled',value:*}}
-	 */
-	function toFulfilledState(x) {
-		return { state: 'fulfilled', value: x };
-	}
-
-	/**
-	 * Creates a rejected state snapshot
-	 * @private
-	 * @param {*} x any reason
-	 * @returns {{state:'rejected',reason:*}}
-	 */
-	function toRejectedState(x) {
-		return { state: 'rejected', reason: x };
-	}
-
-	/**
-	 * Creates a pending state snapshot
-	 * @private
-	 * @returns {{state:'pending'}}
-	 */
-	function toPendingState() {
-		return { state: 'pending' };
-	}
-
-	//
-	// Internals, utilities, etc.
-	//
-
-	var reduceArray, slice, fcall, nextTick, handlerQueue,
-		setTimeout, funcProto, call, arrayProto, monitorApi,
-		cjsRequire, MutationObserver, undef;
-
-	cjsRequire = require;
-
-	//
-	// Shared handler queue processing
-	//
-	// Credit to Twisol (https://github.com/Twisol) for suggesting
-	// this type of extensible queue + trampoline approach for
-	// next-tick conflation.
-
-	handlerQueue = [];
-
-	/**
-	 * Enqueue a task. If the queue is not currently scheduled to be
-	 * drained, schedule it.
-	 * @param {function} task
-	 */
-	function enqueue(task) {
-		if(handlerQueue.push(task) === 1) {
-			nextTick(drainQueue);
-		}
-	}
-
-	/**
-	 * Drain the handler queue entirely, being careful to allow the
-	 * queue to be extended while it is being processed, and to continue
-	 * processing until it is truly empty.
-	 */
-	function drainQueue() {
-		runHandlers(handlerQueue);
-		handlerQueue = [];
-	}
-
-	// capture setTimeout to avoid being caught by fake timers
-	// used in time based tests
-	setTimeout = global.setTimeout;
-
-	// Allow attaching the monitor to when() if env has no console
-	monitorApi = typeof console != 'undefined' ? console : when;
-
-	// Sniff "best" async scheduling option
-	// Prefer process.nextTick or MutationObserver, then check for
-	// vertx and finally fall back to setTimeout
-	/*global process*/
-	if (typeof process === 'object' && process.nextTick) {
-		nextTick = process.nextTick;
-	} else if(MutationObserver = global.MutationObserver || global.WebKitMutationObserver) {
-		nextTick = (function(document, MutationObserver, drainQueue) {
-			var el = document.createElement('div');
-			new MutationObserver(drainQueue).observe(el, { attributes: true });
-
-			return function() {
-				el.setAttribute('x', 'x');
-			};
-		}(document, MutationObserver, drainQueue));
-	} else {
-		try {
-			// vert.x 1.x || 2.x
-			nextTick = cjsRequire('vertx').runOnLoop || cjsRequire('vertx').runOnContext;
-		} catch(ignore) {
-			nextTick = function(t) { setTimeout(t, 0); };
-		}
-	}
-
-	//
-	// Capture/polyfill function and array utils
-	//
-
-	// Safe function calls
-	funcProto = Function.prototype;
-	call = funcProto.call;
-	fcall = funcProto.bind
-		? call.bind(call)
-		: function(f, context) {
-			return f.apply(context, slice.call(arguments, 2));
-		};
-
-	// Safe array ops
-	arrayProto = [];
-	slice = arrayProto.slice;
-
-	// ES5 reduce implementation if native not available
-	// See: http://es5.github.com/#x15.4.4.21 as there are many
-	// specifics and edge cases.  ES5 dictates that reduce.length === 1
-	// This implementation deviates from ES5 spec in the following ways:
-	// 1. It does not check if reduceFunc is a Callable
-	reduceArray = arrayProto.reduce ||
-		function(reduceFunc /*, initialValue */) {
-			/*jshint maxcomplexity: 7*/
-			var arr, args, reduced, len, i;
-
-			i = 0;
-			arr = Object(this);
-			len = arr.length >>> 0;
-			args = arguments;
-
-			// If no initialValue, use first item of array (we know length !== 0 here)
-			// and adjust i to start at second item
-			if(args.length <= 1) {
-				// Skip to the first real element in the array
-				for(;;) {
-					if(i in arr) {
-						reduced = arr[i++];
-						break;
-					}
-
-					// If we reached the end of the array without finding any real
-					// elements, it's a TypeError
-					if(++i >= len) {
-						throw new TypeError();
-					}
-				}
-			} else {
-				// If initialValue provided, use it
-				reduced = args[1];
-			}
-
-			// Do the actual reduce
-			for(;i < len; ++i) {
-				if(i in arr) {
-					reduced = reduceFunc(reduced, arr[i], i, arr);
-				}
-			}
-
-			return reduced;
-		};
-
-	function identity(x) {
-		return x;
-	}
-
-	return when;
-});
-})(typeof define === 'function' && define.amd ? define : function (factory) { module.exports = factory(require); }, this);
-
-define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q','lib/signals'],function(require){
-	var $ = require('jquery');
-	require('lib/jquery.withSelf');
-
-	var Q = require('q'),
-		signals = require('lib/signals');
-
-	var PreloadController = function($context)
-	{
-		this.$context = $context;
-
-		this.on = {
-			'start': new signals.Signal(),
-			'progress': new signals.Signal(),
-			'end': new signals.Signal()
-		};
-
-		var self = this;
-		this.queue = new createjs.LoadQueue(true);
-		this.queue.addEventListener("fileprogress", function(event){
-			self.on.progress.dispatch(event);
-		});
-		this.queue.addEventListener("fileload", function(event){
-			var url = event.item.src;
-			self.onFetched(url, event.result);
-		});
-
-
-		this.cache = {};
-		this.deferredByUrl = [];
-
-		this.dataUrl = 'data.php';
-
-		this.rootChangeBranch = null;
-
-		this.init();
-	}
-
-	var p = PreloadController.prototype;
-
-	p.init = function()
-	{
-		var $original = this.$context;
-		
-		var $content = this.unwrapEnvelope($original);
-
-		this.cacheContent($content);
-
-	};
-
-	p.unwrapEnvelope = function($content)
-	{
-		var $envelopes = $content.withSelf('.gigaContent[data-rel]'); //$('div[data-rel]', $content);
-
-		var $p;
-
-		var $allContents = $();
-
-		$envelopes.each(function(){
-			var $envelope = $(this);
-
-			var $contents = $envelope.children();
-
-			var rel = $envelope.data('rel');
-			$contents.data('rel', rel);
-			$contents.attr('data-rel', rel);
-			$contents.addClass('gigaContent');
-
-			$p = $envelope.parent();//.parent();
-			
-			if ($p.length > 0)
-			{	
-				console.log($contents);
-				//alert('A' + $contents.html());
-				$envelope.detach();
-				$p.append($contents);
-			}
-			else
-			{
-				//alert('B');
-				$contents.detach();
-			}	
-		
-			$allContents = $allContents.add($contents);
-		});
-
-
-		return $($allContents);
-	};
-
-	p.cacheContent = function($content)
-	{
-		var self = this;
-
-		$content.each(function(){
-			var $item = $(this);
-			var url = $item.data('rel');
-			var $content = $item;//.withSelf('div');
-
-			//	console.log('cache:', url, $content.html())
-
-			var deferred = Q.defer();
-			deferred.resolve($content);
-
-			self.cache[url] = deferred.promise;
-		});
-	}
-
-	p.get = function(url)
-	{
-		var cached = this.cache[url];
-		if (cached)
-		{
-			return cached;
-		}
-
-		var deferred = Q.defer();
-
-		this.deferredByUrl[url + this.dataUrl] = deferred;
-
-		this.fetchContent(url);
-
-		return deferred.promise;
-	}
-
-	p.fetchContent = function(url)
-	{
-		console.log('fetchContent', url);
-
-		var self = this;
-
-		this.on.start.dispatch(url);
-
-		var depth;
-
-		var rootChangeBranchArr = this.rootChangeBranch.split('/');
-		var targetBranchArr = url.split('/');
-
-
-		depth = targetBranchArr.length - rootChangeBranchArr.length;
-
-		//alert (depth + ' :: ' + this.rootChangeBranch + ': ' +  rootChangeBranchArr.length + ' vs ' + url + ': ' + targetBranchArr.length);
-
-		//jquery
-/*
-		$.ajax({
-			url: url + this.dataUrl,
-			type: 'POST',
-			data: {
-				depth: depth
-			},
-			success: function(x)
-			{
-				self.onFetched(url + this.dataUrl, x);
-			}
-		});
-*/
-
-
-
-		this.queue.loadFile({
-			src: url + this.dataUrl,
-			method: 'POST',
-			values: {
-				depth: depth
-			}
-		});
-
-	};	
-
-	p.onFetched = function(url, x)
-	{
-		//this.cache[url] = deferred.promise;
-
-		this.on.end.dispatch(url);
-
-		console.log('ok', x);
-
-		var data = x;
-		var title = 'Title: ' + url;
-
-		var State = History.getState(); 
-
-		//	var href = History.getShortUrl(State.url);
-
-		var full = History.getFullUrl(State.url);
-		var root = History.getRootUrl();
-		var href = '/' + full.replace(root, '');
-
-		//strip anchor if present
-		href = href.replace('#', '');
-
-		console.log('= = =');
-		console.log('replace: ', href);
-		console.log('= = =');
-
-//		History.replaceState(null, null, full); //href
-		document.title = title;
-
-		var $content = $(x);
-
-		var $content = this.unwrapEnvelope($content);
-
-		console.log('POST FETCH:', $content);
-
-		//this.$context.append($content);
-
-		this.cacheContent($content); // $content.filter('div[data-rel]')
-
-		var deferred = this.deferredByUrl[url];
-		deferred.resolve($content);
-	};
-
-	return PreloadController;
-});
-/**
- * @fileOverview
- * A module representing a sample Giga Content Renderer.
- */
-
-define('ContentRenderer',['require','jquery','lib/jquery.withSelf'],function(require){
-	
-	var $ = require('jquery');
-	require('lib/jquery.withSelf');
-
-
-/** 
-	Represents a demo Giga Content Renderer.
-	@class
-	@name ContentRenderer 
-	@param $context a DOM context (jQuery / zepto)
-	@param $hidden a DOM context (jQuery / zepto)
-*/
-	var ContentRenderer = function($context, $hidden)
-	{
-		this.$context = $context;
-		this.$hidden = $hidden;
-	};
-
-	var p = ContentRenderer.prototype;
-
-/**
-.... description goes here ...
-@function
-@name ContentRenderer.prototype.init
-
-@description Once upon an example link {@link Site#init}.
-*/   
-	p.init = function()
-	{
-		this.$hidden.append($('.gigaContent[data-rel]', this.$context));
-		this.initNav(this.$context);
-
-		//this.content = [];
-	};
-
-	p.addContent = function($x)
-	{
-		console.log('addContent', $x);
-
-		this.initNav($x);
-
-		this.$hidden.append($x);
-
-		return $x;
-	};
-
-	//cribbed from URI.js
-	p.resolveRelative = function(_path)
-	{
-		while (true) {
-			_parent = _path.indexOf('/../');
-			if (_parent === -1) {
-				// no more ../ to resolve
-				break;
-			} else if (_parent === 0) {
-				// top level cannot be relative...
-				_path = _path.substring(3);
-				break;
-			}
-
-			_pos = _path.substring(0, _parent).lastIndexOf('/');
-			if (_pos === -1) {
-				_pos = _parent;
-			}
-			_path = _path.substring(0, _pos) + _path.substring(_parent + 3);
-		}
-		return _path;
-	}
-
-	p.initNav = function(context)
-	{
-		var self = this;
-
-		context.withSelf('a.nav').each(function(){
-			var navLink = $(this);
-			// console.log('nav link', navLink)
-
-			var href = self.resolveRelative(navLink.attr('href'));
-
-			navLink.click(function(event){
-				event.preventDefault();
-
-				console.log('= = =');
-				console.log('push: ', href);
-				console.log('= = =');
-
-				History.pushState(null, null, href);
-
-				return false;
-			});
-		});
-	};
-
-	return ContentRenderer;
-
-});
-define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tween/TweenLite','lib/tween/plugins/CSSPlugin'],function(require){
-
-	var $ = require('jquery'),
-	easing = require('lib/tween/easing/EasePack'),
-
-	TweenLite = require('lib/tween/TweenLite');
-	//	TimelineLite = require('lib/tween/TimelineLite');
-	
-	require('lib/tween/plugins/CSSPlugin');
-	
-
-	var TestTransitions = function(giga){
-		console.log('new TestTransitions');
-		this.giga = giga;
-	}
-	
-	var p = TestTransitions.prototype;
-
-	p.setTransitionManager = function (transitionManager)
-	{
-		this.transitionManager = transitionManager;
-	}
-
-	p.fadeIn = function($content)
-	{
-		console.log('GET fadeIn fn');
-
-		//, border: '1px solid green'
-		$content.css({opacity: 0});
-		
-		return TweenLite.to($content, this.transitionManager.duration, {
-			opacity: 1
-		});
-	};
-
-	p.fadeOut = function($content)
-	{
-		console.log('GET fadeOut fn');
-
-		//, border: '1px solid red'
-		$content.css({opacity: 1});
-
-		return TweenLite.to($content, this.transitionManager.duration, {
-			opacity: 0
-		});
-	};
-
-
-
-	p.listIn = function($content)
-	{
-		console.log('GET listIn fn');
-
-		$content.css({
-			position: 'relative'
-		});
-		
-		return TweenLite.fromTo($content, this.transitionManager.duration
-		, {
-			left: -100
-		} , {
-			left: 0
-		});
-	};
-
-	p.listOut = function($content)
-	{
-		console.log('GET listOut fn');
-
-		$content.css({
-			position: 'relative'			
-		});
-
-		return TweenLite.fromTo($content, this.transitionManager.duration
-		, {
-			left: 0
-		} , {
-			left: -100
-		});
-	};
-
-	p.projectIn = function($content)
-	{
-		console.log('GET projectIn fn');
-		//	$content.css('border', '1px solid red');
-
-		//	$content.css({
-		//		position: 'relative'			
-		//	});
-
-		var self = this;
-
-		return function(){
-			console.log('projectIn');
-
-			$content.hide();
-
-			$content.slideDown({
-				duration: self.transitionManager.duration * 1000
-			});
-		};
-	};
-
-
-	p.projectOut =  function($content)
-	{
-		console.log('GET projectOut fn');
-
-		var self = this;
-
-		return function(){
-			console.log('projectOut');
-
-			//	$content.hide().show();
-
-			$content.slideUp({
-				duration: self.transitionManager.duration * 1000
-			});
-		};
-	};
-
-
-	return TestTransitions;
-});
-/**
- * @fileOverview
- * A module representing a sample Giga site.
- */
-
-define('test/Site',['require','jquery','lib/jquery.withSelf','lib/giga/Giga','lib/giga/PreloadController','ContentRenderer','TestTransitions'],function(require){
-
-	var $ = require('jquery');
-	require('lib/jquery.withSelf');
-
-	var Giga = require('lib/giga/Giga');
-	var PreloadController = require('lib/giga/PreloadController');
-
-	var ContentRenderer = require('ContentRenderer');
-	var TestTransitions = require('TestTransitions');
-
-/** 
-	Represents a demo Giga site.
-	@class
-	@name Site 
-	@param $context a DOM context (jQuery / zepto)
-*/
-	var Site = function ($context){
-		this.init($context);
-	}
-
-
-	var p = Site.prototype;
-
-/**
-@name Site.hiddenTemplate
-@description HTML fragment used to generate a hidden area in the document
-*/   
-	Site.hiddenTemplate = '<div style="display:none;"></div>'; // style="border: 1px solid red;"
-
-
-/**
-@function
-@name Site.prototype.init
-@param {$context} a DOM context  ..... 
-
-@description
-The sample site instantiates Giga,
-registers the ContentRenderer,
-sets the PreloadController,
-registers the Transitions
-and calls Giga.init
-Once upon an example link {@link Site}.
-
-
-@example
-var mySite = new Site();
-mySite.init($('#context'));
-*/
-    p.init = function($context){
-		var self = this;
-
-		var $hidden = $(Site.hiddenTemplate); 
-		$context.append($hidden);
-
-		this.giga = new Giga($context, $hidden);
-		this.giga.setContentRenderer( ContentRenderer );
-		this.giga.setPreloadController( PreloadController );
-		this.giga.registerTransitions( TestTransitions );
-
-		this.giga.setBranchFlow('/site/project2/', this.giga.flowController.CROSS_FLOW);
-		this.giga.setBranchFlow('/site/project3/', this.giga.flowController.CROSS_FLOW);		
-
-		this.giga.init();
-	};
-
-
-/**
-@function
-@name Site.prototype.init2
-@param {jQuery/Zepto Node} $context DOM context for content rendering 
-@param abc another DOM context  ..... 
-@param def also DOM context  ..... 
-@description Once upon an example link {@link Site#init}.
-*/   
-    p.init2 = function($context, abc, def){
-	};
-
-	return Site;
 });

@@ -2,7 +2,7 @@
 	include('giga/giga.php'); 
 	$g = new giga('/site');
 
-	$g->environment = 'build';
+	$g->environment = 'production';
 ?>
 <!DOCTYPE html>
 <html>
@@ -15,14 +15,15 @@
 <![endif]-->
 
 	<?php if ($g->environment == 'dev') { ?>
-
-
+		<script src="/site/js/lib/require.js"></script>
+		<script src="/site/js/lib/require.config.js"></script>
 	<?php } else if ($g->environment == 'build') { ?>
-		<script src="/site/js/test/Site.js"></script>
+		<script src="/site/js/build/Site.js"></script>
 	<?php } else if ($g->environment == 'production') { ?>
-		<script src="/site/js/test/Site.min.js"></script>
+		<script src="/site/js/build/Site.min.js"></script>
 	<?php } ?>
 
+		<script src="/site/js/lib/preloadjs-0.4.0.min.js"></script>
 		<script src="/site/js/lib/jquery-1.7.1.js"></script>	
 		
 		<script>

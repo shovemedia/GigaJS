@@ -1,10 +1,21 @@
+/**
+ * @fileOverview
+ * A module representing a sample Giga Content Renderer.
+ */
+
 define(function(require){
 	
 	var $ = require('jquery');
 	require('lib/jquery.withSelf');
 
 
-
+/** 
+	Represents a demo Giga Content Renderer.
+	@class
+	@name ContentRenderer 
+	@param $context a DOM context (jQuery / zepto)
+	@param $hidden a DOM context (jQuery / zepto)
+*/
 	var ContentRenderer = function($context, $hidden)
 	{
 		this.$context = $context;
@@ -13,6 +24,13 @@ define(function(require){
 
 	var p = ContentRenderer.prototype;
 
+/**
+.... description goes here ...
+@function
+@name ContentRenderer.prototype.init
+
+@description Once upon an example link {@link Site#init}.
+*/   
 	p.init = function()
 	{
 		this.$hidden.append($('.gigaContent[data-rel]', this.$context));

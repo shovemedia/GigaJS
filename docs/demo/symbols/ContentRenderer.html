@@ -5,7 +5,7 @@
 		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
 		<meta name="generator" content="JsDoc Toolkit" />
 		
-		<title>JsDoc Reference - Site</title>
+		<title>JsDoc Reference - ContentRenderer</title>
 
         <link rel="stylesheet" href="../static/default.css" type="text/css" media="screen" charset="utf-8" />
 	</head>
@@ -52,7 +52,7 @@
              </h3>
              <ul>
                 <li >
-                  <a href="../symbols/Site.html">Site</a>
+                  <a href="../symbols/ContentRenderer.html">ContentRenderer</a>
                 </li>
              </ul>
            
@@ -60,15 +60,6 @@
 
            <!-- properties list -->
            
-           
-             <h3>Fields</h3>
-             <ul>
-               
-                 <li>
-                   <a href="../symbols/Site.html#.hiddenTemplate">hiddenTemplate</a>
-                 </li>
-               
-             </ul>
            
            <!-- end properties list -->
 
@@ -79,11 +70,7 @@
              <ul>
                
                    <li>
-                        <a href="../symbols/Site.html#init">init</a>
-                    </li>
-               
-                   <li>
-                        <a href="../symbols/Site.html#init2">init2</a>
+                        <a href="../symbols/ContentRenderer.html#init">init</a>
                     </li>
                
              </ul>
@@ -99,7 +86,7 @@
 		<div id="content">
 <!-- ============================== class title ============================ -->
 			<h1 class="classTitle">
-				Class Site
+				Class ContentRenderer
 			</h1>
 
 <!-- ============================== class summary ========================== -->			
@@ -110,7 +97,7 @@
 				
 				
 				
-					<br /><i>Defined in: </i> <a href="../symbols/src/src_js_test_Site.js.html">Site.js</a>.
+					<br /><i>Defined in: </i> <a href="../symbols/src/src_js_ContentRenderer.js.html">ContentRenderer.js</a>.
 				
 			</p>
 
@@ -122,11 +109,11 @@
 				</div>
 				
 				<div class="fixedFont">
-						<b>Site</b>($context)
+						<b>ContentRenderer</b>($context, $hidden)
 				</div>
 				
 				<div class="description">
-					<p>Represents a demo Giga site.</p>
+					<p>Represents a demo Giga Content Renderer.</p>
 					
 				</div>
 				
@@ -139,6 +126,12 @@
 						
 							<dt>
 								 <b>$context</b>
+								
+							</dt>
+								<dd>a DOM context (jQuery / zepto)</dd>
+						
+							<dt>
+								 <b>$hidden</b>
 								
 							</dt>
 								<dd>a DOM context (jQuery / zepto)</dd>
@@ -157,37 +150,6 @@
 
 <!-- ============================== field details ========================== -->		
 			
-              <div class="details">
-				<div class="sectionTitle">
-					Field Detail
-				</div>
-				
-                  <div class="member">
-					<a name=".hiddenTemplate"> </a>
-					<div class="fixedFont">
-                      <div class="modifiers">&lt;static&gt; 
-                      </div>
-					
-					
-					<span class="light">Site.</span><b>hiddenTemplate</b>
-					
-					</div>
-					<div class="description">
-						<p>HTML fragment used to generate a hidden area in the document</p>
-						
-						
-					</div>
-					
-					
-
-						
-						
-						
-						
-                  </div>
-				
-              </div>
-			
 
 <!-- ============================== method details ========================= -->		
 			
@@ -202,88 +164,18 @@
                       <div class="modifiers">
                       </div>
 					
-					<b>init</b>(a)
+					<b>init</b>()
 					
 					</div>
 					<div class="description">
-						<p>The sample site instantiates Giga,
-registers the ContentRenderer,
-sets the PreloadController,
-registers the Transitions
-and calls Giga.init
-Once upon an example link <a href="../symbols/Site.html">Site</a>.</p>
+						<p>.... description goes here ...
+Once upon an example link <a href="../symbols/Site.html#init">Site#init</a>.</p>
 						
 						
 					</div>
 					
 					
 					
-					<pre class="code">var mySite = new Site();
-mySite.init($('#context'));</pre>
-					
-					
-					
-						
-							<dl class="detailList">
-							<dt class="heading">Parameters:</dt>
-							
-								<dt>
-									<span class="light fixedFont">{$context}</span> <b>a</b>
-									
-								</dt>
-								<dd>DOM context  .....</dd>
-							
-							</dl>
-						
-						
-						
-						
-						
-						
-						
-
-                  </div>
-				
-                  <div class="member">
-					<a name="init2"> </a>
-					<div class="fixedFont">
-                      <div class="modifiers">
-                      </div>
-					
-					<b>init2</b>($context, abc, def)
-					
-					</div>
-					<div class="description">
-						<p>Once upon an example link <a href="../symbols/Site.html#init">Site#init</a>.</p>
-						
-						
-					</div>
-					
-					
-					
-						
-							<dl class="detailList">
-							<dt class="heading">Parameters:</dt>
-							
-								<dt>
-									<span class="light fixedFont">{jQuery/Zepto Node}</span> <b>$context</b>
-									
-								</dt>
-								<dd>DOM context for content rendering</dd>
-							
-								<dt>
-									<b>abc</b>
-									
-								</dt>
-								<dd>another DOM context  .....</dd>
-							
-								<dt>
-									<b>def</b>
-									
-								</dt>
-								<dd>also DOM context  .....</dd>
-							
-							</dl>
 						
 						
 						
@@ -306,7 +198,7 @@ mySite.init($('#context'));</pre>
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both;text-align:center">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Sun Nov 03 2013 22:08:06 GMT-0500 (EST)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Sun Nov 03 2013 22:08:05 GMT-0500 (EST)
 		</div>
 	</body>
 </html>

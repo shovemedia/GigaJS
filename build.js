@@ -1,8 +1,8 @@
 ({
   dir:                     "build",
-  appDir:                  "src/js",
+  appDir:                  "js/src",
   baseUrl:                 ".",
-  mainConfigFile:          "src/js/lib/require.config.js",
+  mainConfigFile:          "js/lib/require.config.js",
   skipDirOptimize:         true,
   preserveLicenseComments: false,
   removeCombined:          true,

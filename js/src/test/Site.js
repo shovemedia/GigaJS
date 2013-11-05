@@ -14,14 +14,9 @@ define(function(require){
 	var ContentRenderer = require('ContentRenderer');
 	var TestTransitions = require('TestTransitions');
 
-
-// style="border: 1px solid red;"
-	var hiddenTemplate = '<div style="display:none;"></div>';
-	
-
 /** 
-	Represents a sample Giga site.
-	@constructor
+	Represents a demo Giga site.
+	@class
 	@name Site 
 	@param $context a DOM context (jQuery / zepto)
 */
@@ -33,15 +28,34 @@ define(function(require){
 	var p = Site.prototype;
 
 /**
-.... description goes here ...
-@function
-@name Site.init
-@param {$context} a DOM context  ..... 
+@name Site.hiddenTemplate
+@description HTML fragment used to generate a hidden area in the document
 */   
+	Site.hiddenTemplate = '<div style="display:none;"></div>'; // style="border: 1px solid red;"
+
+
+/**
+@function
+@name Site.prototype.init
+@param {$context} a DOM context  ..... 
+
+@description
+The sample site instantiates Giga,
+registers the ContentRenderer,
+sets the PreloadController,
+registers the Transitions
+and calls Giga.init
+Once upon an example link {@link Site}.
+
+
+@example
+var mySite = new Site();
+mySite.init($('#context'));
+*/
     p.init = function($context){
 		var self = this;
 
-		var $hidden = $(hiddenTemplate); 
+		var $hidden = $(Site.hiddenTemplate); 
 		$context.append($hidden);
 
 		this.giga = new Giga($context, $hidden);
@@ -57,12 +71,12 @@ define(function(require){
 
 
 /**
-.... description goes here ...
 @function
-@name Site.init2
+@name Site.prototype.init2
 @param {jQuery/Zepto Node} $context DOM context for content rendering 
 @param abc another DOM context  ..... 
 @param def also DOM context  ..... 
+@description Once upon an example link {@link Site#init}.
 */   
     p.init2 = function($context, abc, def){
 	};

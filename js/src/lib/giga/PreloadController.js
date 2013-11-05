@@ -2,13 +2,32 @@ define(function(require){
 	var $ = require('jquery');
 	require('lib/jquery.withSelf');
 
-	var Q = require('q');
+	var Q = require('q'),
+		signals = require('lib/signals');
 
 	var PreloadController = function($context)
 	{
 		this.$context = $context;
 
+		this.on = {
+			'start': new signals.Signal(),
+			'progress': new signals.Signal(),
+			'end': new signals.Signal()
+		};
+
+		var self = this;
+		this.queue = new createjs.LoadQueue(true);
+		this.queue.addEventListener("fileprogress", function(event){
+			self.on.progress.dispatch(event);
+		});
+		this.queue.addEventListener("fileload", function(event){
+			var url = event.item.src;
+			self.onFetched(url, event.result);
+		});
+
+
 		this.cache = {};
+		this.deferredByUrl = [];
 
 		this.dataUrl = 'data.php';
 
@@ -78,7 +97,7 @@ define(function(require){
 			var url = $item.data('rel');
 			var $content = $item;//.withSelf('div');
 
-			console.log('cache:', url, $content.html())
+			//	console.log('cache:', url, $content.html())
 
 			var deferred = Q.defer();
 			deferred.resolve($content);
@@ -96,16 +115,21 @@ define(function(require){
 		}
 
 		var deferred = Q.defer();
-		this.fetchContent(url, deferred);
+
+		this.deferredByUrl[url + this.dataUrl] = deferred;
+
+		this.fetchContent(url);
 
 		return deferred.promise;
 	}
 
-	p.fetchContent = function(url, deferred)
+	p.fetchContent = function(url)
 	{
 		console.log('fetchContent', url);
 
 		var self = this;
+
+		this.on.start.dispatch(url);
 
 		var depth;
 
@@ -117,7 +141,8 @@ define(function(require){
 
 		//alert (depth + ' :: ' + this.rootChangeBranch + ': ' +  rootChangeBranchArr.length + ' vs ' + url + ': ' + targetBranchArr.length);
 
-
+		//jquery
+/*
 		$.ajax({
 			url: url + this.dataUrl,
 			type: 'POST',
@@ -126,14 +151,28 @@ define(function(require){
 			},
 			success: function(x)
 			{
-				self.onFetched(url, x, deferred);
+				self.onFetched(url + this.dataUrl, x);
 			}
 		});
+*/
+
+
+
+		this.queue.loadFile({
+			src: url + this.dataUrl,
+			method: 'POST',
+			values: {
+				depth: depth
+			}
+		});
+
 	};	
 
-	p.onFetched = function(url, x, deferred)
+	p.onFetched = function(url, x)
 	{
 		//this.cache[url] = deferred.promise;
+
+		this.on.end.dispatch(url);
 
 		console.log('ok', x);
 
@@ -168,6 +207,7 @@ define(function(require){
 
 		this.cacheContent($content); // $content.filter('div[data-rel]')
 
+		var deferred = this.deferredByUrl[url];
 		deferred.resolve($content);
 	};
 

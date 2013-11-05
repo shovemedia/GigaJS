@@ -190,10 +190,13 @@
 
         <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit" classpath="${jsdoc-toolkit.dir}/jsdoc-toolkit-ant-task-1.1.2.jar;${jsdoc-toolkit.dir}/java/classes/js.jar" />
 
-        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/test" outputdir="${docs.dir}/demo" includeundocumented="true">
+        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx"  outputdir="${docs.dir}/demo">
+            <source file="${src.dir}/test" />
+            <source file="${src.dir}/ContentRenderer.js" />
+            <source file="${src.dir}/TestTransitions.js" />
         </jsdoctoolkit>
 
-        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}/giga" includeundocumented="true">
+        <jsdoctoolkit jsdochome="${jsdoc-toolkit.dir}/" template="xxx" inputdir="${src.dir}/lib/giga" outputdir="${docs.dir}/giga">
         </jsdoctoolkit>    
 
 <!--
@@ -223,7 +226,21 @@
                 excludes="${module.dir}${dist.module.name} ${module.dir}${dist.module.min.name} ${site.dir}${dist.site.name} ${site.dir}${dist.site.min.name} all.css">
             </fileset>              
         </delete>
-    </target>  
+    </target> 
+
+    <target name="copyBuildToDemo">
+        <echo message="Copy JS build to demo..." />
+
+        <echo message="module demo..." />
+        <copy todir="${demo.dir}/module/js/build">
+            <fileset dir="${build.dir}/lib/giga"></fileset>
+        </copy>
+
+        <echo message="site demo..." />
+        <copy todir="${demo.dir}/site/js/build">
+            <fileset dir="${build.dir}/test"></fileset>
+        </copy>
+    </target>
 
     <target name="beep">
         <exec executable="afplay">
@@ -256,7 +273,7 @@
  </target>
 
     <!--    -->
-    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, buildCSS, clean, beep">
+    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, buildCSS, clean, copyBuildToDemo, beep">
         <echo message="Build Complete." />
     </target>
 
