@@ -10519,13 +10519,13 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 			self.on.progress.dispatch(event);
 		});
 		this.queue.addEventListener("fileload", function(event){
-			var url = event.item.src;
+			var url = event.item.id;
 			self.onFetched(url, event.result);
 		});
 
 
 		this.cache = {};
-		this.deferredByUrl = [];
+		//	this.deferredByUrl = [];
 
 		this.dataUrl = 'data.php';
 
@@ -10546,17 +10546,15 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		this.cacheContent($content);
 
-		var deferred = Q.defer();
-		this.deferredByUrl[url + this.dataUrl] = deferred;		
-
-		var allImagesReady = this.preloadImages($content);
-
 		//	var self = this;
-		allImagesReady.then(function(){
-			console.log('home ready! @ ');
-			//var deferred = self.deferredByUrl[url];
-			deferred.resolve($content);
-		});
+
+		//	var deferred = this.cache[url];
+
+		//	allImagesReady.then(function(){
+		//		console.log('home ready! @ ');
+		//		//var deferred = self.deferredByUrl[url];
+		//		deferred.resolve($content);
+		//	});
 	};
 
 	p.unwrapEnvelope = function($content)
@@ -10602,36 +10600,69 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 	p.cacheContent = function($content)
 	{
 		var self = this;
+		var allImagesReady = [];
+		var cacheItem = [];
+		var contentItem = [];
 
 		$content.each(function(){
 			var $item = $(this);
+
 			var url = $item.data('rel');
-			var $content = $item;//.withSelf('div');
+			//var $content = $item;//.withSelf('div');
 
-			//	console.log('cache:', url, $content.html())
+			console.log('cache:', url, $item[0].outerHTML);
 
-			var deferred = Q.defer();
-			deferred.resolve($content);
+			var imagesReady = self.preloadImages($item);
+			allImagesReady.push(imagesReady);
 
-			self.cache[url] = deferred.promise;
+			var deferred;
+
+			if (self.cache[url] != undefined)
+			{
+				deferred = self.cache[url];
+			}
+			else
+			{
+				deferred = Q.defer();
+				self.cache[url] = deferred;	
+			}
+
+			cacheItem[url] = deferred;	
+
+			if (contentItem[url] == undefined)
+			{
+				contentItem[url] = [];
+			}	
+			contentItem[url].push($item);
+		});
+
+		Q.all(allImagesReady).then(function(){
+			for(var url in cacheItem)
+			{
+				var content = contentItem[url];
+				var $content = $();
+				for (var j=0, len=content.length; j<len; j++)
+				{
+					$content = $content.add(content[j]);
+				}
+				cacheItem[url].resolve($content);
+			}
 		});
 	}
 
 	p.get = function(url)
 	{
-		//	console.log('PreloadController get', url, this.deferredByUrl[url + this.dataUrl])
-
 		var deferred;
 
-		var cached = this.cache[url];
-		if (cached)
+		if (this.cache[url] != undefined)
 		{
-			deferred = this.deferredByUrl[url + this.dataUrl];
+			deferred = this.cache[url];//this.deferredByUrl[url + this.dataUrl];
 		}
 		else
 		{
+			//console.log('PreloadController get unknown url', url, this.cache[url]);
 			deferred = Q.defer();
-			this.deferredByUrl[url + this.dataUrl] = deferred;
+			this.cache[url] = deferred;
 			this.fetchContent(url);
 		}
 
@@ -10674,6 +10705,7 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 
 		this.queue.loadFile({
+			id: url,
 			src: url + this.dataUrl,
 			method: 'POST',
 			values: {
@@ -10722,14 +10754,16 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		this.cacheContent($content); // $content.filter('div[data-rel]')
 
-		var allImagesReady = this.preloadImages($content);
+		//this.preloadImages($content);
 
-		var self = this;
-		allImagesReady.then(function(){
-			//	alert('fetched & ready! @ ' + url);
-			var deferred = self.deferredByUrl[url];
-			deferred.resolve($content);
-		});
+		//	var self = this;
+		//	allImagesReady.then(function(){
+		//		console.log("OK!", url);
+		//		var deferred = self.cache[url];
+			
+		//		console.log(deferred);
+		//		deferred.resolve($content);
+		//	});
 	};
 
 	p.preloadImages = function($content)
