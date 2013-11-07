@@ -7,6 +7,7 @@ Giga leverages the following fine libraries:
 <ul>
 <li>require.js — All JS in Giga is wrapped as an AMD module.</li>
 <li>almond.js — optimized builds are built with the require.js optimizer to include almond</li>
+<li>CreateJS PreloadJS — makes possible the pretty progress meter during site load (etc)</li>
 <li>History.js — as GAIA used SWFAddress, Giga uses History.js</li>
 <li>when.js / Q.js — Promises implementation</li>
 <li>signals.js — "Event" dispatching</li>
