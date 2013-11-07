@@ -12,20 +12,20 @@
 		<link rel="stylesheet" type="text/css" href="/module/css/main.css" />
 
 <!--[if lt IE 10]>	
-<script src="/site/js/lib/ie/function.bind.js"></script>
-<script src="/site/js/lib/ie/stacktrace.js"></script>
+<script src="/module/js/lib/ie/function.bind.js"></script>
+<script src="/module/js/lib/ie/stacktrace.js"></script>
 <![endif]-->
 
 <!-- canvas shim for IE8 here -->
 
 
 <!--
-		<script src="/site/js/lib/preloadjs-0.4.0.min.js"></script>
-		<script src="/site/js/lib/requestAnimationFrame.js"></script>
-		<script src="/site/js/lib/PreloadView.js"></script>
+		<script src="/module/js/lib/preloadjs-0.4.0.min.js"></script>
+		<script src="/module/js/lib/requestAnimationFrame.js"></script>
+		<script src="/module/js/lib/PreloadView.js"></script>
 -->
 
-		<script src="/site/js/build/PreloadView.min.js"></script>
+		<script src="/module/js/build/PreloadView.min.js"></script>
 
 		<script src="/module/js/lib/require.js"></script>
 		<script src="/module/js/lib/require.config.js"></script>
