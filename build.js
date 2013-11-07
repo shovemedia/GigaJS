@@ -10,8 +10,11 @@
 
   optimize: 'none',
 
+//  , exclude: ["jquery"]
+
   modules: [
-    { name : "test/Site",     include: ["lib/almond"], exclude: ["jquery"] },
-    { name : "lib/giga/Giga",                          exclude: ["jquery"] }
+    //  { name : "preloader/Main",  include: ["lib/almond"] },
+    { name : "test/Site",         include: ["lib/almond"]        },
+    { name : "lib/giga/Giga"     }
   ],
 })

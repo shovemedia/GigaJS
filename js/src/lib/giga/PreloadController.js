@@ -33,19 +33,32 @@ define(function(require){
 
 		this.rootChangeBranch = null;
 
-		this.init();
+		
 	}
 
 	var p = PreloadController.prototype;
 
-	p.init = function()
+	p.init = function(url)
 	{
+		console.log('init', url);
+
 		var $original = this.$context;
 		
 		var $content = this.unwrapEnvelope($original);
 
 		this.cacheContent($content);
 
+		var deferred = Q.defer();
+		this.deferredByUrl[url + this.dataUrl] = deferred;		
+
+		var allImagesReady = this.preloadImages($content);
+
+		//	var self = this;
+		allImagesReady.then(function(){
+			console.log('home ready! @ ');
+			//var deferred = self.deferredByUrl[url];
+			deferred.resolve($content);
+		});
 	};
 
 	p.unwrapEnvelope = function($content)
@@ -108,17 +121,21 @@ define(function(require){
 
 	p.get = function(url)
 	{
+		//	console.log('PreloadController get', url, this.deferredByUrl[url + this.dataUrl])
+
+		var deferred;
+
 		var cached = this.cache[url];
 		if (cached)
 		{
-			return cached;
+			deferred = this.deferredByUrl[url + this.dataUrl];
 		}
-
-		var deferred = Q.defer();
-
-		this.deferredByUrl[url + this.dataUrl] = deferred;
-
-		this.fetchContent(url);
+		else
+		{
+			deferred = Q.defer();
+			this.deferredByUrl[url + this.dataUrl] = deferred;
+			this.fetchContent(url);
+		}
 
 		return deferred.promise;
 	}
@@ -207,8 +224,37 @@ define(function(require){
 
 		this.cacheContent($content); // $content.filter('div[data-rel]')
 
-		var deferred = this.deferredByUrl[url];
-		deferred.resolve($content);
+		var allImagesReady = this.preloadImages($content);
+
+		var self = this;
+		allImagesReady.then(function(){
+			//	alert('fetched & ready! @ ' + url);
+			var deferred = self.deferredByUrl[url];
+			deferred.resolve($content);
+		});
+	};
+
+	p.preloadImages = function($content)
+	{
+		//Guarantee all images are loaded!
+		var imgLoadPromises = [];
+
+		var $img = $('img', $content);
+		$img.each(function(){
+			var $item = $(this);
+			if (!$item[0].complete && $item[0].ready != "complete")
+			{
+				var deferred = Q.defer();
+				imgLoadPromises.push(deferred.promise);
+
+				$item.load(function(){
+					deferred.resolve();
+				});
+			}	
+		});
+		
+		//var self = this;
+		return Q.all(imgLoadPromises);
 	};
 
 	return PreloadController;

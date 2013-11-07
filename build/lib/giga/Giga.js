@@ -8919,7 +8919,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
 
-			//	
+			
 
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
@@ -8940,7 +8940,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			self.navigateTo(self.targetBranch); //
 		});
 
-		
+			
 			
 			
 			
@@ -8957,7 +8957,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		
 
 		var loc = full.replace(root, ''); //root
-		var siteRoot = this.siteRoot; 	
+		var siteRoot = this.siteRoot;
+
+		var branch;
 
 		if (History.emulated.pushState)
 		{
@@ -8975,10 +8977,11 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 				if('/' + loc == siteRoot + '/' + '#' + anchor)
 				{
 					//alert('goto anchor: ' + siteRoot + '/' + anchor);
-					this.gotoBranch(siteRoot + '/' + anchor);
+					branch = siteRoot + '/' + anchor;
 
 					//IE < 10 will "eat" the hash if we got here via redirect!
 					window.document.location.href = window.document.URL;
+
 				}
 				else
 				{
@@ -8991,11 +8994,11 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			else
 			{
 				loc = this.normalizeBranch(loc).replace(siteRoot, '');
-
+				
 				if (loc == '/')
 				{
 					//alert('C: goto branch ' + siteRoot + loc);
-					this.gotoBranch(siteRoot + loc);
+					branch = siteRoot + loc;
 				}	
 				else
 				{
@@ -9028,11 +9031,12 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			}
 			else
 			{
-				this.gotoBranch('/' + loc);
-			}
-
-			
+				branch = '/' + loc;
+			}			
 		}
+
+		this.preloadController.init(branch);
+		this.gotoBranch(branch);
 
 			
 
@@ -9115,7 +9119,8 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	p.setPreloadController = function(clazz)
 	{
 		//	
-		this.preloadController = new clazz(this.$context)
+		this.preloadController = new clazz(this.$context);
+
 	};
 
 	p.setContentRenderer = function(clazz)
@@ -9134,10 +9139,6 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	// This method is the beginning of the event chain
 	p.gotoBranch = function(branch)
 	{
-		if (!branch) {
-			branch = "/";
-		}
-
 		branch = this.normalizeBranch(branch);
 		
 		if (this.targetBranch != branch)

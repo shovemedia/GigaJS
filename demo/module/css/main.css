@@ -1,0 +1,137 @@
+body
+{
+	background: #333333;
+	color: #CCCCCC;
+}
+
+a {
+	color: #FFFFFF;
+	text-decoration: none;
+}
+
+.canvas.preloader
+{
+	position: absolute;
+	top: 50%;
+	margin-top: -125px;
+	left: 50%;
+	margin-left: -125px;
+}
+
+.canvas.preloader.off
+{
+	-webkit-transition: opacity 1s ease-in-out;
+	-moz-transition: opacity 1s ease-in-out;
+	-o-transition: opacity 1s ease-in-out;
+	-ms-transition: opacity 1s ease-in-out;
+	transition: opacity 1s ease-in-out;
+
+	opacity: 0;
+}
+
+
+
+@-webkit-keyframes bounceOut {
+	0% {
+		-webkit-transform: scale(1);
+	}
+	
+	25% {
+		-webkit-transform: scale(.95);
+	}
+	
+	50% {
+		-webkit-transform: scale(1.1);
+	}
+	
+	100% {
+		-webkit-transform: scale(.3);
+	}	
+}
+
+@-moz-keyframes bounceOut {
+	0% {
+		-moz-transform: scale(1);
+	}
+	
+	25% {
+		-moz-transform: scale(.95);
+	}
+	
+	50% {
+		-moz-transform: scale(1.1);
+	}
+	
+	100% {
+		-moz-transform: scale(.3);
+	}	
+}
+
+@-o-keyframes bounceOut {
+	0% {
+		-o-transform: scale(1);
+	}
+	
+	25% {
+		-o-transform: scale(.95);
+	}
+	
+	50% {
+		-o-transform: scale(1.1);
+	}
+	
+	100% {
+		-o-transform: scale(.3);
+	}	
+}
+
+@keyframes bounceOut {
+	0% {
+		transform: scale(1);
+	}
+	
+	25% {
+		transform: scale(.95);
+	}
+	
+	50% {
+		transform: scale(1.1);
+	}
+	
+	100% {
+		transform: scale(.3);
+	}	
+}
+
+.bounceOut {
+	-webkit-animation-duration: .5s;
+	   -moz-animation-duration: .5s;
+	     -o-animation-duration: .5s;
+	        animation-duration: .5s;
+
+/*	-webkit-transition: opacity 1s ease-in-out;
+	-moz-transition: opacity 1s ease-in-out;
+	-o-transition: opacity 1s ease-in-out;
+	-ms-transition: opacity 1s ease-in-out;
+	transition: opacity 1s ease-in-out;*/
+
+	-webkit-animation-name: bounceOut;
+	-moz-animation-name: bounceOut;
+	-o-animation-name: bounceOut;
+	animation-name: bounceOut;
+
+	-webkit-transition: opacity .5s ease-in-out;
+	   -moz-transition: opacity .5s ease-in-out;
+	     -o-transition: opacity .5s ease-in-out;
+	    -ms-transition: opacity .5s ease-in-out;
+	        transition: opacity .5s ease-in-out;
+
+	opacity: 0;
+}
+
+
+
+.antiFOUC
+{
+	display: none;
+}

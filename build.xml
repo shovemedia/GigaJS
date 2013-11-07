@@ -175,6 +175,24 @@
     </target>
 
 
+    <target name="minifyPreloader" depends="">
+        <echo message="Building ${dist.preloader.min.name}..." />
+
+        <jscomp compilationLevel="simple" debug="false" output="${build.dir}/${dist.preloader.min.name}">
+            <externs dir="${dev.dir}">
+                <file name="externs.js"/>
+            </externs>
+            <sources dir="${dev.dir}">
+                <file name="/js/lib/preloadjs-0.4.0.min.js" />
+                <file name="/js/lib/requestAnimationFrame.js" />
+                <file name="/demo/site/js/lib/${dist.preloader.name}"/>
+            </sources>
+        </jscomp>
+
+        <echo message="${dist.preloader.min.name} built." />
+    </target>
+
+
 
     <target name="-purgeDocs">
         <delete dir="${docs.dir}" />
@@ -223,7 +241,13 @@
         <delete includeEmptyDirs="true">
             <fileset dir="${build.dir}" defaultexcludes="no" 
                 includes="**/*"
-                excludes="${module.dir}${dist.module.name} ${module.dir}${dist.module.min.name} ${site.dir}${dist.site.name} ${site.dir}${dist.site.min.name} all.css">
+                excludes="
+                    ${module.dir}${dist.module.name} 
+                    ${module.dir}${dist.module.min.name} 
+                    ${site.dir}${dist.site.name} 
+                    ${site.dir}${dist.site.min.name} 
+                    ${dist.preloader.min.name}
+                    all.css">
             </fileset>              
         </delete>
     </target> 
@@ -239,6 +263,16 @@
         <echo message="site demo..." />
         <copy todir="${demo.dir}/site/js/build">
             <fileset dir="${build.dir}/test"></fileset>
+        </copy>
+
+        <echo message="module demo preloader..." />
+        <copy todir="${demo.dir}/module/js/build">
+            <fileset file="${build.dir}/PreloadView.min.js"></fileset>
+        </copy>
+
+        <echo message="site demo preloader..." />
+        <copy todir="${demo.dir}/site/js/build">
+            <fileset file="${build.dir}/PreloadView.min.js"></fileset>
         </copy>
     </target>
 
@@ -273,7 +307,7 @@
  </target>
 
     <!--    -->
-    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, buildCSS, clean, copyBuildToDemo, beep">
+    <target name="build" depends="purgeJsDeploy, copyCSS, compileViaNode, minifyModule, minifySite, minifyPreloader, buildCSS, clean, copyBuildToDemo, beep">
         <echo message="Build Complete." />
     </target>
 

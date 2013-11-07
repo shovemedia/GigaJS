@@ -9245,7 +9245,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 
 			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
 
-			//	console.log ('preload: ', url)
+			console.log ('preload: ', self.transitioningBranch);
 
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
@@ -9266,7 +9266,7 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			self.navigateTo(self.targetBranch); //
 		});
 
-		console.log('INIT: ', History.getLocationHref() );
+			console.log('INIT: ', History.getLocationHref() );
 			console.log('short: ' + History.getShortUrl(History.getLocationHref()));
 			console.log('full: ' + History.getFullUrl(History.getLocationHref()));
 			console.log('root: ' + History.getRootUrl());
@@ -9283,7 +9283,9 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 		console.log('anchor: ', anchor);
 
 		var loc = full.replace(root, ''); //root
-		var siteRoot = this.siteRoot; 	
+		var siteRoot = this.siteRoot;
+
+		var branch;
 
 		if (History.emulated.pushState)
 		{
@@ -9301,10 +9303,11 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 				if('/' + loc == siteRoot + '/' + '#' + anchor)
 				{
 					//alert('goto anchor: ' + siteRoot + '/' + anchor);
-					this.gotoBranch(siteRoot + '/' + anchor);
+					branch = siteRoot + '/' + anchor;
 
 					//IE < 10 will "eat" the hash if we got here via redirect!
 					window.document.location.href = window.document.URL;
+
 				}
 				else
 				{
@@ -9317,11 +9320,11 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			else
 			{
 				loc = this.normalizeBranch(loc).replace(siteRoot, '');
-
+				
 				if (loc == '/')
 				{
 					//alert('C: goto branch ' + siteRoot + loc);
-					this.gotoBranch(siteRoot + loc);
+					branch = siteRoot + loc;
 				}	
 				else
 				{
@@ -9354,11 +9357,12 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 			}
 			else
 			{
-				this.gotoBranch('/' + loc);
-			}
-
-			
+				branch = '/' + loc;
+			}			
 		}
+
+		this.preloadController.init(branch);
+		this.gotoBranch(branch);
 
 			
 
@@ -9441,7 +9445,8 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	p.setPreloadController = function(clazz)
 	{
 		//	console.log ('preload controller', x);
-		this.preloadController = new clazz(this.$context)
+		this.preloadController = new clazz(this.$context);
+
 	};
 
 	p.setContentRenderer = function(clazz)
@@ -9460,10 +9465,6 @@ define('lib/giga/Giga',['require','lib/signals','lib/History','lib/giga/SiteCont
 	// This method is the beginning of the event chain
 	p.gotoBranch = function(branch)
 	{
-		if (!branch) {
-			branch = "/";
-		}
-
 		branch = this.normalizeBranch(branch);
 		
 		if (this.targetBranch != branch)
@@ -10530,19 +10531,32 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		this.rootChangeBranch = null;
 
-		this.init();
+		
 	}
 
 	var p = PreloadController.prototype;
 
-	p.init = function()
+	p.init = function(url)
 	{
+		console.log('init', url);
+
 		var $original = this.$context;
 		
 		var $content = this.unwrapEnvelope($original);
 
 		this.cacheContent($content);
 
+		var deferred = Q.defer();
+		this.deferredByUrl[url + this.dataUrl] = deferred;		
+
+		var allImagesReady = this.preloadImages($content);
+
+		//	var self = this;
+		allImagesReady.then(function(){
+			console.log('home ready! @ ');
+			//var deferred = self.deferredByUrl[url];
+			deferred.resolve($content);
+		});
 	};
 
 	p.unwrapEnvelope = function($content)
@@ -10605,17 +10619,21 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 	p.get = function(url)
 	{
+		//	console.log('PreloadController get', url, this.deferredByUrl[url + this.dataUrl])
+
+		var deferred;
+
 		var cached = this.cache[url];
 		if (cached)
 		{
-			return cached;
+			deferred = this.deferredByUrl[url + this.dataUrl];
 		}
-
-		var deferred = Q.defer();
-
-		this.deferredByUrl[url + this.dataUrl] = deferred;
-
-		this.fetchContent(url);
+		else
+		{
+			deferred = Q.defer();
+			this.deferredByUrl[url + this.dataUrl] = deferred;
+			this.fetchContent(url);
+		}
 
 		return deferred.promise;
 	}
@@ -10704,8 +10722,37 @@ define('lib/giga/PreloadController',['require','jquery','lib/jquery.withSelf','q
 
 		this.cacheContent($content); // $content.filter('div[data-rel]')
 
-		var deferred = this.deferredByUrl[url];
-		deferred.resolve($content);
+		var allImagesReady = this.preloadImages($content);
+
+		var self = this;
+		allImagesReady.then(function(){
+			//	alert('fetched & ready! @ ' + url);
+			var deferred = self.deferredByUrl[url];
+			deferred.resolve($content);
+		});
+	};
+
+	p.preloadImages = function($content)
+	{
+		//Guarantee all images are loaded!
+		var imgLoadPromises = [];
+
+		var $img = $('img', $content);
+		$img.each(function(){
+			var $item = $(this);
+			if (!$item[0].complete && $item[0].ready != "complete")
+			{
+				var deferred = Q.defer();
+				imgLoadPromises.push(deferred.promise);
+
+				$item.load(function(){
+					deferred.resolve();
+				});
+			}	
+		});
+		
+		//var self = this;
+		return Q.all(imgLoadPromises);
 	};
 
 	return PreloadController;

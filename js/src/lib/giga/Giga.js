@@ -136,7 +136,7 @@ define(function(require){
 
 			//	var url = self.transitioningBranch.replace(self.siteRoot , '')
 
-			//	console.log ('preload: ', url)
+			console.log ('preload: ', self.transitioningBranch);
 
 			var promise = self.preloadController.get(self.transitioningBranch, step);
 
@@ -157,7 +157,7 @@ define(function(require){
 			self.navigateTo(self.targetBranch); //
 		});
 
-		console.log('INIT: ', History.getLocationHref() );
+			console.log('INIT: ', History.getLocationHref() );
 			console.log('short: ' + History.getShortUrl(History.getLocationHref()));
 			console.log('full: ' + History.getFullUrl(History.getLocationHref()));
 			console.log('root: ' + History.getRootUrl());
@@ -174,7 +174,9 @@ define(function(require){
 		console.log('anchor: ', anchor);
 
 		var loc = full.replace(root, ''); //root
-		var siteRoot = this.siteRoot; 	
+		var siteRoot = this.siteRoot;
+
+		var branch;
 
 		if (History.emulated.pushState)
 		{
@@ -192,10 +194,11 @@ define(function(require){
 				if('/' + loc == siteRoot + '/' + '#' + anchor)
 				{
 					//alert('goto anchor: ' + siteRoot + '/' + anchor);
-					this.gotoBranch(siteRoot + '/' + anchor);
+					branch = siteRoot + '/' + anchor;
 
 					//IE < 10 will "eat" the hash if we got here via redirect!
 					window.document.location.href = window.document.URL;
+
 				}
 				else
 				{
@@ -208,11 +211,11 @@ define(function(require){
 			else
 			{
 				loc = this.normalizeBranch(loc).replace(siteRoot, '');
-
+				
 				if (loc == '/')
 				{
 					//alert('C: goto branch ' + siteRoot + loc);
-					this.gotoBranch(siteRoot + loc);
+					branch = siteRoot + loc;
 				}	
 				else
 				{
@@ -245,11 +248,12 @@ define(function(require){
 			}
 			else
 			{
-				this.gotoBranch('/' + loc);
-			}
-
-			
+				branch = '/' + loc;
+			}			
 		}
+
+		this.preloadController.init(branch);
+		this.gotoBranch(branch);
 
 			
 
@@ -332,7 +336,8 @@ define(function(require){
 	p.setPreloadController = function(clazz)
 	{
 		//	console.log ('preload controller', x);
-		this.preloadController = new clazz(this.$context)
+		this.preloadController = new clazz(this.$context);
+
 	};
 
 	p.setContentRenderer = function(clazz)
@@ -351,10 +356,6 @@ define(function(require){
 	// This method is the beginning of the event chain
 	p.gotoBranch = function(branch)
 	{
-		if (!branch) {
-			branch = "/";
-		}
-
 		branch = this.normalizeBranch(branch);
 		
 		if (this.targetBranch != branch)
