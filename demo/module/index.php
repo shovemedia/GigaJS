@@ -2,7 +2,7 @@
 	include('giga/giga.php'); 
 	$g = new giga('/module');
 
-	$g->environment = 'dev';
+	$g->environment = 'production';
 ?>
 <!DOCTYPE html>
 <html>
@@ -61,11 +61,11 @@
 
 <?php } else if ($g->environment == 'production') { ?>
 
-			loadItems.push({src: '/site/js/build/Giga.min.js'});
+			loadItems.push({src: '/module/js/build/Giga.min.js'});
 
 <?php } ?>
 
-			loadItems.push({src: '/site/js/lib/jquery-1.7.1.js'});
+			loadItems.push({src: '/module/js/lib/jquery-1.7.1.js'});
 			queue.loadManifest(loadItems);
 		</script>
 
