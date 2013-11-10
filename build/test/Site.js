@@ -10893,7 +10893,7 @@ define('ContentRenderer',['require','jquery','lib/jquery.withSelf'],function(req
 	return ContentRenderer;
 
 });
-define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tween/TweenLite','lib/tween/plugins/CSSPlugin'],function(require){
+define('test/Transitions',['require','jquery','lib/tween/easing/EasePack','lib/tween/TweenLite','lib/tween/plugins/CSSPlugin'],function(require){
 
 	var $ = require('jquery'),
 	easing = require('lib/tween/easing/EasePack'),
@@ -11022,7 +11022,7 @@ define('TestTransitions',['require','jquery','lib/tween/easing/EasePack','lib/tw
  * A module representing a sample Giga site.
  */
 
-define('test/Site',['require','jquery','lib/jquery.withSelf','lib/giga/Giga','lib/giga/PreloadController','ContentRenderer','TestTransitions'],function(require){
+define('test/Site',['require','jquery','lib/jquery.withSelf','lib/giga/Giga','lib/giga/PreloadController','ContentRenderer','test/Transitions'],function(require){
 
 	var $ = require('jquery');
 	require('lib/jquery.withSelf');
@@ -11031,7 +11031,7 @@ define('test/Site',['require','jquery','lib/jquery.withSelf','lib/giga/Giga','li
 	var PreloadController = require('lib/giga/PreloadController');
 
 	var ContentRenderer = require('ContentRenderer');
-	var TestTransitions = require('TestTransitions');
+	var TestTransitions = require('test/Transitions');
 
 /** 
 	Represents a demo Giga site.

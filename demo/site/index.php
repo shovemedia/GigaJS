@@ -2,7 +2,7 @@
 	include('giga/giga.php'); 
 	$g = new giga('/site');
 
-	$g->environment = 'dev';
+	$g->environment = 'production';
 ?>
 <!DOCTYPE html>
 <html>
@@ -15,20 +15,43 @@
 <script src="/site/js/lib/ie/function.bind.js"></script>
 <script src="/site/js/lib/ie/stacktrace.js"></script>
 <![endif]-->
-
 <!-- canvas shim for IE8 here -->
 
 
-<!--
-		<script src="/site/js/lib/preloadjs-0.4.0.min.js"></script>
-		<script src="/site/js/lib/requestAnimationFrame.js"></script>
-		<script src="/site/js/lib/PreloadView.js"></script>
--->
+<!-- Preloader -->
+<?php if ($g->environment == 'dev') { ?>
+
+		<script src="/site/js/src/lib/preloadjs-0.4.0.min.js"></script>
+		<script src="/site/js/src/lib/requestAnimationFrame.js"></script>
+		<script src="/site/js/src/test/PreloadView.js"></script>
+
+<?php } else { ?>
 
 		<script src="/site/js/build/PreloadView.min.js"></script>
 
+<?php } ?>
+
+
+<!-- Site -->
 		<script>
 			var queue = new createjs.LoadQueue(true);
+			var loadItems = [];
+
+<?php if ($g->environment == 'dev') { ?>
+
+			loadItems.push({src: '/site/js/lib/require.js'});
+			loadItems.push({src: '/site/js/lib/require.config.js'});
+
+<?php } else if ($g->environment == 'build') { ?>
+
+			loadItems.push({src: '/site/js/build/Site.js'});
+
+<?php } else if ($g->environment == 'production') { ?>
+
+			loadItems.push({src: '/site/js/build/Site.min.js'});
+
+<?php } ?>
+
 
 			var preloadView = new PreloadView(queue);
 			preloadView.setImgSrc('/site/gradient.jpg');
@@ -47,22 +70,6 @@
 				});
 			});
 
-			var loadItems = [];
-
-<?php if ($g->environment == 'dev') { ?>
-
-			loadItems.push({src: '/site/js/lib/require.js'});
-			loadItems.push({src: '/site/js/lib/require.config.js'});
-
-<?php } else if ($g->environment == 'build') { ?>
-
-			loadItems.push({src: '/site/js/build/Site.js'});
-
-<?php } else if ($g->environment == 'production') { ?>
-
-			loadItems.push({src: '/site/js/build/Site.min.js'});
-
-<?php } ?>
 
 			loadItems.push({src: '/site/js/lib/jquery-1.7.1.js'});
 			queue.loadManifest(loadItems);
@@ -72,6 +79,7 @@
 
 	<body id="contextView">
 		<script type="text/javascript">
+			// if JS supported, hide everything
 			document.getElementById("contextView").style.display = "none";
 		</script>
 

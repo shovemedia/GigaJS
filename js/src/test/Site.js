@@ -12,7 +12,7 @@ define(function(require){
 	var PreloadController = require('lib/giga/PreloadController');
 
 	var ContentRenderer = require('ContentRenderer');
-	var TestTransitions = require('TestTransitions');
+	var TestTransitions = require('test/Transitions');
 
 /** 
 	Represents a demo Giga site.

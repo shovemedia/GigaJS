@@ -15,17 +15,22 @@
 <script src="/module/js/lib/ie/function.bind.js"></script>
 <script src="/module/js/lib/ie/stacktrace.js"></script>
 <![endif]-->
-
 <!-- canvas shim for IE8 here -->
 
 
-<!--
-		<script src="/module/js/lib/preloadjs-0.4.0.min.js"></script>
-		<script src="/module/js/lib/requestAnimationFrame.js"></script>
-		<script src="/module/js/lib/PreloadView.js"></script>
--->
+<!-- Preloader -->
+<?php if ($g->environment == 'dev') { ?>
+
+		<script src="/module/js/src/lib/preloadjs-0.4.0.min.js"></script>
+		<script src="/module/js/src/lib/requestAnimationFrame.js"></script>
+		<script src="/module/js/src/test/PreloadView.js"></script>
+
+<?php } else { ?>
 
 		<script src="/module/js/build/PreloadView.min.js"></script>
+
+<?php } ?>
+
 
 		<script src="/module/js/lib/require.js"></script>
 		<script src="/module/js/lib/require.config.js"></script>
@@ -33,6 +38,19 @@
 
 		<script>
 			var queue = new createjs.LoadQueue(true);
+			var loadItems = [];
+
+<?php if ($g->environment == 'dev') { ?>
+// none
+<?php } else if ($g->environment == 'build') { ?>
+
+			loadItems.push({src: '/module/js/build/Giga.js'});
+
+<?php } else if ($g->environment == 'production') { ?>
+
+			loadItems.push({src: '/module/js/build/Giga.min.js'});
+
+<?php } ?>
 
 			var preloadView = new PreloadView(queue);
 			preloadView.setImgSrc('/module/gradient.jpg');
@@ -51,24 +69,9 @@
 				});
 			});
 
-			var loadItems = [];
-
-<?php if ($g->environment == 'dev') { ?>
-// none
-<?php } else if ($g->environment == 'build') { ?>
-
-			loadItems.push({src: '/module/js/build/Giga.js'});
-
-<?php } else if ($g->environment == 'production') { ?>
-
-			loadItems.push({src: '/module/js/build/Giga.min.js'});
-
-<?php } ?>
-
 			loadItems.push({src: '/module/js/lib/jquery-1.7.1.js'});
 			queue.loadManifest(loadItems);
 		</script>
-
 
 	</head>
 
@@ -77,6 +80,8 @@
 			// if JS supported, hide everything
 			document.getElementById("contextView").style.display = "none";
 		</script>
+
+		<div id="title_area"></div>
 
 		<div id="projectDetail">
 		<?php $g->content(); ?>

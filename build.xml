@@ -183,9 +183,9 @@
                 <file name="externs.js"/>
             </externs>
             <sources dir="${dev.dir}">
-                <file name="/js/lib/preloadjs-0.4.0.min.js" />
-                <file name="/js/lib/requestAnimationFrame.js" />
-                <file name="/demo/site/js/lib/${dist.preloader.name}"/>
+                <file name="/js/src/lib/preloadjs-0.4.0.min.js" />
+                <file name="/js/src/lib/requestAnimationFrame.js" />
+                <file name="/js/src/test/${dist.preloader.name}"/>
             </sources>
         </jscomp>
 
