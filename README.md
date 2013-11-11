@@ -16,26 +16,7 @@ Giga leverages the following fine libraries:
 </ul>
 
 <h2>Installation</h2>
-The files in the PHP folder must be added to your server.
-
-Don't forget the .htaccess file — it routes all requests to index.php, the site template. 
-<ul>
-	<li>Deep link requests will render a full site with the requested content whereever you place $giga-&gt;content()</li>
-	<li>Normal navigation requests will be intercepted by giga; Giga JS will request your html content via AJAX.</li>
-</ul>
-
-If you're <em>not</em> installing into the root directory of your server, you'll need to make a few adjustments.
-
-For example, if you were installing into the /module folder (as the module demo does):
-
-<ul>
-<li>.htaccess: RewriteBase /module</li>
-<li>require.config.js: baseUrl: "/module/js"</li>
-<li>index.php:
-	Pass the path to the php giga constructor: $g = new giga('/module');
-	Make sure all the paths to script files are prefixed with /module. Remember, all deeplink requests
-	are routed through index.php so relative paths won't work.</li>
-</ul>	
+See: <a href="https://github.com/shovemedia/GigaJS/wiki/Getting-Started-With-GigaJS">Getting Started with GigaJS</a>
 
 
 <h2>Demos!</h2>
