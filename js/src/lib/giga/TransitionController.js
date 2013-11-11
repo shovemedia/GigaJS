@@ -22,7 +22,9 @@ define(function(require){
 		this.on = {
 			'transitionOut': new signals.Signal(),
 			'transitionIn': new signals.Signal()
-		}
+		};
+
+		this.transitions = {};
 
 		this.duration = 3;
 
@@ -31,6 +33,8 @@ define(function(require){
 	};
 
 	var p = TransitionController.prototype;
+
+
 
 	p.setDefaultContentTarget = function(x)
 	{
@@ -191,6 +195,9 @@ define(function(require){
 			tweens.push(tween);
 		}
 
+		console.log('xition', transitionName);
+		console.log(self.transitions[transitionName]);
+
 		tl.add(tweens, null, "start");
 
 		return tl;
@@ -199,15 +206,16 @@ define(function(require){
 
 	p.registerTransitions = function(clazz)
 	{
-		this.transitions = new clazz(this.giga);
-		this.transitions.setTransitionManager(this);
+		var transitions = new clazz(this.giga, this);
 		
-		console.log(this.transitions);
-
-		//	for (var i in obj)
-		//	{
-
-		//	}
+		for (var i in transitions)
+		{
+			if (typeof transitions[i] == 'function')
+			{
+				console.log('registerTransition:', i);
+				this.transitions[i] = transitions[i].bind(transitions);
+			}
+		}
 	};
 
 	return TransitionController;

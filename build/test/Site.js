@@ -8917,7 +8917,9 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 		this.on = {
 			'transitionOut': new signals.Signal(),
 			'transitionIn': new signals.Signal()
-		}
+		};
+
+		this.transitions = {};
 
 		this.duration = 3;
 
@@ -8926,6 +8928,8 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 	};
 
 	var p = TransitionController.prototype;
+
+
 
 	p.setDefaultContentTarget = function(x)
 	{
@@ -9086,6 +9090,9 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			tweens.push(tween);
 		}
 
+		console.log('xition', transitionName);
+		console.log(self.transitions[transitionName]);
+
 		tl.add(tweens, null, "start");
 
 		return tl;
@@ -9094,15 +9101,16 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.registerTransitions = function(clazz)
 	{
-		this.transitions = new clazz(this.giga);
-		this.transitions.setTransitionManager(this);
+		var transitions = new clazz(this.giga, this);
 		
-		console.log(this.transitions);
-
-		//	for (var i in obj)
-		//	{
-
-		//	}
+		for (var i in transitions)
+		{
+			if (typeof transitions[i] == 'function')
+			{
+				console.log('registerTransition:', i);
+				this.transitions[i] = transitions[i].bind(transitions);
+			}
+		}
 	};
 
 	return TransitionController;
@@ -10904,17 +10912,13 @@ define('test/Transitions',['require','jquery','lib/tween/easing/EasePack','lib/t
 	require('lib/tween/plugins/CSSPlugin');
 	
 
-	var TestTransitions = function(giga){
+	var TestTransitions = function(giga, transitionManager){
 		console.log('new TestTransitions');
 		this.giga = giga;
+		this.transitionManager = transitionManager;
 	}
 	
 	var p = TestTransitions.prototype;
-
-	p.setTransitionManager = function (transitionManager)
-	{
-		this.transitionManager = transitionManager;
-	}
 
 	p.fadeIn = function($content)
 	{

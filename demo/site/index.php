@@ -2,7 +2,7 @@
 	include('giga/giga.php'); 
 	$g = new giga('/site');
 
-	$g->environment = 'production';
+	$g->environment = 'dev';
 ?>
 <!DOCTYPE html>
 <html>

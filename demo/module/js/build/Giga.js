@@ -8591,7 +8591,9 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 		this.on = {
 			'transitionOut': new signals.Signal(),
 			'transitionIn': new signals.Signal()
-		}
+		};
+
+		this.transitions = {};
 
 		this.duration = 3;
 
@@ -8600,6 +8602,8 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 	};
 
 	var p = TransitionController.prototype;
+
+
 
 	p.setDefaultContentTarget = function(x)
 	{
@@ -8760,6 +8764,9 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 			tweens.push(tween);
 		}
 
+		
+		
+
 		tl.add(tweens, null, "start");
 
 		return tl;
@@ -8768,15 +8775,16 @@ define('lib/giga/TransitionController',['require','jquery','lib/tween/easing/Eas
 
 	p.registerTransitions = function(clazz)
 	{
-		this.transitions = new clazz(this.giga);
-		this.transitions.setTransitionManager(this);
+		var transitions = new clazz(this.giga, this);
 		
-		
-
-		//	for (var i in obj)
-		//	{
-
-		//	}
+		for (var i in transitions)
+		{
+			if (typeof transitions[i] == 'function')
+			{
+				
+				this.transitions[i] = transitions[i].bind(transitions);
+			}
+		}
 	};
 
 	return TransitionController;

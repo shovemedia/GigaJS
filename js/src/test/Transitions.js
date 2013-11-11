@@ -9,17 +9,13 @@ define(function(require){
 	require('lib/tween/plugins/CSSPlugin');
 	
 
-	var TestTransitions = function(giga){
+	var TestTransitions = function(giga, transitionManager){
 		console.log('new TestTransitions');
 		this.giga = giga;
+		this.transitionManager = transitionManager;
 	}
 	
 	var p = TestTransitions.prototype;
-
-	p.setTransitionManager = function (transitionManager)
-	{
-		this.transitionManager = transitionManager;
-	}
 
 	p.fadeIn = function($content)
 	{

@@ -2,8 +2,10 @@
 
 class giga
 {
-	function giga($gigaroot = '/')
+	function giga($gigaroot='')
 	{
+		$gigaroot = rtrim($gigaroot, '/');
+
 		$this->root = $_SERVER['DOCUMENT_ROOT']; //;
 		$this->gigaroot = $gigaroot; 
 
@@ -52,14 +54,23 @@ class giga
 					$this->dir .= '/' . $path_parts['filename'];
 					// echo 'D*: ' . $this->dir . "\n";
 					
-				}	
-				$this->dir = str_replace( $this->gigaroot, '', $this->dir);
-			//}		
+				}
+
+				// if ($this->gigaroot != '/')
+				// {
+				// 	$this->dir = str_replace( $this->gigaroot, '', $this->dir);
+				// }		
 			
-			//dir = dirname($this->root . $request);
+				if ($this->gigaroot != '')
+				{
+					$pos = strpos($this->dir, $this->gigaroot);
+					if ($pos !== false) {
+						// echo "replace! ".$pos;
+					    $this->dir = substr_replace($this->dir,'', $pos, strlen($this->gigaroot));
+					}
+				}	
 
-
-	 			//echo "XXX dir: " . $this->dir . "\n";
+	 		//	echo "XXX dir: " . $this->dir . "\n";
 
 
 			//if it's a datafile request
@@ -101,7 +112,11 @@ class giga
 		{
 			$depth = 0;
 			$dir_array = explode('/', $this->dir);
+			$dir_array = array_filter($dir_array);
+			array_unshift($dir_array, '');
+
 			$len = count($dir_array) - 1;
+
 
 			$path = '';
 
@@ -124,11 +139,12 @@ class giga
 					break;
 				}
 
-				// echo "folder: " . $folder . "\n";
-				// echo "PATH: " . $this->root . $this->gigaroot .  $path  . $this->datafile  . "\n";
-				// echo "len: " . $len  . "\n";
-				// echo "depth: " . $depth  . "\n";
-				// echo "req depth: " . $requestedDepth  . "\n";
+				 // echo "folder: " . $folder . "\n";
+				 // echo "PATH: " .  $path  . "\n";
+				 // echo "request: " . $this->root . $this->gigaroot .  $path  . $this->datafile  . "\n";
+				 // echo "len: " . $len  . "\n";
+				 // echo "depth: " . $depth  . "\n";
+				 // echo "req depth: " . $requestedDepth  . "\n";
 
 				if ($requestedDepth == -1 || $len - $depth <= $requestedDepth)
 				{
